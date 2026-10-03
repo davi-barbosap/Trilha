@@ -1,203 +1,196 @@
-# Sistema de Automação Google Ads com Claude — Arquitetura v0.1
+# Sistema de Automação Google Ads com Claude — Arquitetura v0.3
 
 > Status: rascunho de arquitetura · 2026-10-02
+> **Leia primeiro:** [`ARQUITETURA-NUCLEO.md`](ARQUITETURA-NUCLEO.md) — estratégia, onboarding, perfil, brand kit, playbooks, conversão real, estatística e governança são compartilhados e não se repetem aqui.
+> Documento irmão: [`ARQUITETURA-META-ADS.md`](ARQUITETURA-META-ADS.md)
 > Referência inicial: masterclass "Claude Code + Google Ads" (Jono), com adaptações e correções próprias.
-> Documento irmão: [`ARQUITETURA-META-ADS.md`](ARQUITETURA-META-ADS.md) — as duas plataformas compartilham núcleo, perfil do cliente, normalização e motores estatísticos.
+
+### Changelog
+- **v0.3** — Conteúdo comum movido para o núcleo. Novos: landing pages em três níveis, Perfil da Empresa no Google, anúncios de chamada e formulário de lead, integração com brand kit (verificador de copy, ofertas, regras comerciais), destino WhatsApp com rastreamento, negativas vindas do playbook do segmento, auditoria de onboarding.
+- **v0.2** — (sem versão própria; numeração alinhada ao núcleo e ao Meta)
+- **v0.1** — Acesso via API, seis módulos, conversões offline, correções à referência.
 
 ---
 
-## 1. Objetivo
+## 1. Papel do Google no sistema
 
-Construir um sistema **agnóstico de cliente** para Google Ads (rede de pesquisa) que cubra o ciclo completo — pesquisa de palavras-chave, estrutura de campanhas, geração de anúncios, landing pages, rastreamento, otimização e retorno de conversões — adaptando-se a cada cliente a partir do **perfil fornecido no onboarding**.
+O Google **captura demanda**: atende quem já está procurando. O fator decisivo é a **coerência de intenção** — busca → anúncio → página → atendimento falando a mesma coisa — e a disciplina de não pagar por buscas que nunca viram cliente. Volume é limitado pela demanda existente; por isso a Camada 0 (núcleo §3) precisa estimar o teto de volume antes de prometer resultado.
 
-Princípios (os mesmos do Meta, mais dois específicos):
-- **Núcleo fixo, personalização por dados.**
-- **Leitura livre, escrita com aprovação.** O Claude prepara as mudanças; nada é publicado sem confirmação.
-- **Cálculo em código, nunca "de cabeça".**
-- **Conversão real acima da métrica da plataforma.**
-- **Volume real, nunca inventado.** Palavras-chave sempre validadas com dados do Planejador de Palavras-chave; o modelo não sabe volume de busca.
-- **Coerência de intenção.** Busca → anúncio → landing page → atendimento falam a mesma coisa.
-- **Filtro humano obrigatório** em toda decisão que envolva verba.
+## 2. Implementação
 
-## 2. Decisão de implementação
-
-Diferente do Meta, a referência não usa um conector pronto: o acesso é pela **API do Google Ads via Claude Code**.
-
-| Função | Ferramenta | Por quê |
-|---|---|---|
-| Acesso à conta | Google Ads API (biblioteca oficial Python + GAQL) | Cobertura completa: leitura, criação, relatórios, termos de pesquisa |
-| Pesquisa de palavras-chave | Planejador de Palavras-chave (via API ou exportação manual) | Volume, concorrência e lance estimado reais |
-| Cálculos e estatística | Código no repositório (núcleo compartilhado) | Determinístico e versionado |
-| Geração em massa | Skills (`/campanha`, `/anuncios`, `/negativas`, `/landing`) | Repetível sem reexplicar contexto |
-| Landing pages | Next.js → GitHub → Vercel | Uma página por intenção, deploy simples |
-| Consultas pontuais | Claude Code em conversa | Auditorias e diagnósticos rápidos |
-
-Se surgir um conector MCP confiável para Google Ads, ele pode substituir a camada de acesso sem mudar o resto.
-
-## 3. Configuração de acesso (uma vez por agência)
-
-1. **Conta de administrador (MCC)** — vincular as contas dos clientes como subcontas. Uma MCC atende todos os clientes.
-2. **Developer token** — na Central de API da MCC. O nível inicial tem limite de requisições; solicitar acesso ampliado quando a operação crescer.
-3. **Projeto no Google Cloud** — ativar a Google Ads API.
-4. **OAuth** — tela de consentimento + cliente do tipo "aplicativo para computador"; baixar `credentials.json`; autenticar uma vez e guardar o refresh token.
-5. **Segredos** — `developer_token`, `login_customer_id` (MCC), `client_id`, `client_secret`, `refresh_token` em `.env`, **nunca no Git**. Repositório com `.env.example` apenas com os nomes.
-
-## 4. Arquitetura em camadas
-
-```
-┌─────────────────────────────────────────────────────────┐
-│ CONECTORES     Google Ads API · Keyword Planner · CRM   │
-└──────────────────────────┬──────────────────────────────┘
-                           │ dados brutos → normalização comum
-┌──────────────────────────▼──────────────────────────────┐
-│ CAMADA 1 — NÚCLEO (compartilhado com Meta)              │
-│  + módulos Google: palavras-chave · estrutura · RSA ·   │
-│    negativas · landing pages · rastreamento             │
-└──────────────────────────┬──────────────────────────────┘
-┌──────────────────────────▼──────────────────────────────┐
-│ CAMADA 2 — PERFIL DO CLIENTE (mesmo perfil.yaml)        │
-└──────────────────────────┬──────────────────────────────┘
-┌──────────────────────────▼──────────────────────────────┐
-│ CAMADA 3 — REGRAS DERIVADAS                             │
-└─────────────────────────────────────────────────────────┘
-```
-
-### 4.1 Módulos específicos do Google
-
-**M1 — Pesquisa e triagem de palavras-chave**
-- Entrada: serviços e área geográfica do perfil.
-- Puxa ideias do Planejador **restrito à região do cliente** (nunca o país inteiro por padrão).
-- Classifica cada termo por intenção:
-  - **Comercial/urgente** (ex.: "serviço + perto de mim", "serviço + cidade", "emergência", "24h") → manter.
-  - **Informacional, vaga de emprego, curso, DIY, fornecedor/peça, concorrente** → descartar ou negativar.
-- Saída: lista aprovada com volume, concorrência e lance estimado + lista de descartes.
-- **Matriz serviço × local**: gera combinações e corta as que não têm volume mínimo (definido no perfil).
-
-**M2 — Estrutura de campanhas**
-- Campanha = serviço (ou linha de negócio), com orçamento, horários e localização próprios.
-- **Grupos temáticos fechados (STAG)** como padrão: poucos termos muito próximos por grupo.
-  - *Correção à referência:* SKAG puro (um termo por grupo) perdeu força porque as correspondências de frase/exata hoje incluem variações próximas, e os lances inteligentes precisam de volume por grupo. SKAG fica reservado a termos de alto volume e alto valor.
-- Correspondência padrão: **frase** (+ exata nos termos-núcleo). Ampla apenas com lances inteligentes maduros e conversão real alimentando o algoritmo.
-- **Configurações-padrão de proteção** (aplicadas a todo cliente, salvo exceção no perfil):
-  - somente **rede de pesquisa** (sem parceiros de pesquisa, sem display na campanha de pesquisa);
-  - segmentação geográfica por **presença**, não "presença ou interesse";
-  - exclusão de países fora da área de atendimento;
-  - **aplicação automática de recomendações desligada**;
-  - sem segmentos de público restringindo a pesquisa fria (apenas observação).
-- Lances: começar em **maximizar conversões**; migrar para **CPA-alvo / ROAS-alvo** quando houver volume e conversão real suficientes (limiar no perfil).
-
-**M3 — Gerador de anúncios responsivos (RSA)**
-- Até 15 títulos e 4 descrições por anúncio, gerados a partir de: termo do grupo + perfil + branding + avatares + oferta.
-- **Título 1 fixado com o termo/intenção do grupo**; demais títulos (ofertas, diferenciais, prova) rodam livres.
-- Extensões sempre completas: sitelinks, frases de destaque, snippets estruturados, chamada, local, nome e logo — ocupam mais espaço na página.
-- *Correção à referência:* cada grupo aceita **no máximo 3 RSAs ativos**. "Testar centenas de anúncios" na prática significa testar variações de títulos, ofertas e landing pages ao longo do tempo, com volume suficiente.
-- Validação automática antes de publicar: limites de caracteres, políticas, termos proibidos do perfil, coerência com a landing page.
-
-**M4 — Negativas**
-- **Lista universal por segmento** (empregos, cursos, DIY, grátis, definição, peças, suporte a clientes existentes…), compartilhada entre campanhas do cliente.
-- **Varredura recorrente de termos de pesquisa**: o Claude classifica cada termo (geografia errada, intenção errada, concorrente, emprego…), propõe negativas com justificativa e só aplica após aprovação.
-- Termos ambíguos são verificados pela intenção real (ex.: "contratação de X" pode ser vaga de emprego, não cliente).
-
-**M5 — Landing pages**
-- Uma página por intenção (grupo ou família de grupos), com título que repete a busca.
-- Gerador em Next.js com template por cliente (cores e tipografia do `branding.md`); referência visual opcional.
-- Checklist de conversão: formulário na primeira dobra, prova social (idealmente depoimentos em vídeo), vídeo do responsável, oferta clara, carregamento rápido.
-- Deploy: GitHub → Vercel; depois do deploy, atualizar a URL final dos anúncios.
-- Teste A/B de páginas como alavanca principal de conversão.
-
-**M6 — Rastreamento e públicos**
-- Tag do Google em todas as páginas; evento de conversão no envio do formulário e na ligação.
-- Verificação automática da tag (Tag Assistant / teste de navegador).
-- Público de visitantes do site para **RLSA** (remarketing na pesquisa) — lance maior para quem já conhece a marca. Display de remarketing apenas como teste.
-
-### 4.2 Módulo de conversão real (compartilhado com Meta)
-
-```
-Busca → anúncio → landing → captura de gclid + UTMs (campos ocultos do formulário)
-     → CRM (lead + campanha + termo + gclid) → status: qualificado / vendido / valor
-     → (a) painel interno de ROAS/CPA real por campanha e termo
-     → (b) importação de conversões offline no Google Ads (gclid + valor)
-```
-
-- Permite migrar para ROAS-alvo com valores reais, não um valor fixo por lead.
-- Conversões otimizadas para leads podem complementar quando o gclid se perder.
-- **Rotina de higiene**: ligação ao lead em até poucos minutos (velocidade de resposta) e registro de qualidade no CRM — sem isso, o retorno ao Google ensina o algoritmo errado.
-
-### 4.3 Motores do núcleo aplicados ao Google
-
-| Motor | Adaptação |
+| Função | Ferramenta |
 |---|---|
-| Relatórios | Métricas adicionais: parcela de impressões, posição/topo, índice de qualidade e seus 3 componentes, CPC |
-| Anomalias | Mesmo método (mediana/MAD, regras por volume) + alertas específicos: orçamento limitado, queda de parcela de impressões, reprovação de anúncio, tag sem disparar |
-| Vencedores | Nível: termo de pesquisa e combinação título/página; encolhimento bayesiano igual ao Meta |
-| Auditoria | Painel semanal: campanhas a pausar, a escalar, termos a negativar, índices de qualidade baixos e por quê |
+| Acesso à conta | Google Ads API (biblioteca oficial Python + GAQL) via Claude Code |
+| Pesquisa de palavras-chave | Planejador de Palavras-chave (API ou exportação) |
+| Cálculos | núcleo |
+| Geração em massa | skills (`/campanha`, `/anuncios`, `/negativas`, `/landing`) |
+| Landing pages | três níveis (§4.5) |
 
-## 5. Campos adicionais no perfil do cliente
+Se surgir um conector MCP confiável para Google Ads, ele substitui só a camada de acesso.
+
+### 2.1 Configuração de acesso (uma vez por agência)
+
+1. **Conta de administrador (MCC)** com as contas dos clientes vinculadas — o cliente continua dono da conta.
+2. **Developer token** na Central de API (nível inicial limitado; pedir ampliação quando crescer).
+3. **Projeto no Google Cloud** com a Google Ads API ativada.
+4. **OAuth** (cliente "aplicativo para computador"), autenticação única, refresh token guardado.
+5. **Segredos** em `.env` (`developer_token`, `login_customer_id`, `client_id`, `client_secret`, `refresh_token`); `.env.example` só com nomes.
+
+## 3. Auditoria de onboarding (Google)
+
+- [ ] Conta vinculada à MCC; histórico e acessos
+- [ ] Ações de conversão: quais existem, qual é primária, se contam formulários/ligações/WhatsApp/offline
+- [ ] Tag do Google e conversões otimizadas ativas
+- [ ] Configurações de risco: parceiros de pesquisa, rede de display em campanha de pesquisa, localização por "interesse", recomendações automáticas aplicadas
+- [ ] Termos de pesquisa dos últimos 90 dias: % do gasto em termos irrelevantes (estimativa de desperdício)
+- [ ] Índice de qualidade por palavra-chave e seus três componentes
+- [ ] Estrutura: fragmentação, grupos sem anúncio ou com 1 título, extensões faltando
+- [ ] Perfil da Empresa no Google vinculado (negócios locais)
+- [ ] Coerência anúncio → página (amostra)
+
+## 4. Módulos
+
+### M1 — Pesquisa e triagem de palavras-chave
+
+- Entrada: ofertas (`ofertas/`), área de atendimento e serviços (`perfil.yaml`), negativas do playbook.
+- Ideias do Planejador **restritas à região do cliente**; volume, concorrência e lance estimado reais — o modelo não inventa volume.
+- Classificação por intenção:
+  - **Comercial / urgente** (serviço + cidade/bairro, "perto de mim", "emergência", "24h", nome da oferta) → manter.
+  - **Informacional, emprego, curso, DIY, peça/fornecedor, concorrente** → descartar ou negativar.
+- **Matriz oferta/serviço × local**, cortando combinações abaixo do volume mínimo do perfil.
+- Termos ambíguos verificados pela intenção real da busca antes de entrar.
+- **Estimativa de teto de demanda**: soma de volume × CTR esperado × taxa de conversão → alimenta a Camada 0 (o Google sozinho comporta a meta?).
+
+### M2 — Estrutura de campanhas
+
+- Campanha = oferta ou linha de serviço, com orçamento, horário (do `marca.yaml`) e localização próprios.
+- **Grupos temáticos fechados (STAG)** como padrão; SKAG apenas para termos de alto volume e alto valor.
+- Correspondência: **frase** + **exata** nos termos-núcleo; ampla só com lances inteligentes maduros alimentados por conversão real.
+- **Padrões de proteção** (salvo exceção no perfil):
+  - somente rede de pesquisa; sem parceiros de pesquisa;
+  - localização por **presença**;
+  - exclusão de países/regiões fora da área de atendimento;
+  - recomendações automáticas **desligadas**;
+  - públicos apenas em observação na pesquisa fria.
+- **Lances** seguindo a escada de evento do núcleo: maximizar conversões (lead) → CPA-alvo (lead qualificado) → ROAS-alvo (venda com valor), cada degrau liberado por volume mínimo.
+- Formatos opcionais, decididos pela Camada 0: PMax e display tratados como **hipóteses a testar**, nunca padrão; remarketing na pesquisa (RLSA) como primeiro teste de público quente.
+
+### M3 — Anúncios responsivos (RSA) e extensões
+
+- Até 15 títulos e 4 descrições por anúncio, gerados de: termo do grupo + oferta (diferenciais concretos, condições, objeções) + voz da marca + avatares.
+- **Título 1 fixado com a intenção do grupo**; os demais (ofertas, prova, diferenciais, resposta a objeções) rodam livres.
+- Máximo de **3 RSAs ativos por grupo** — o teste real é de títulos, ofertas e páginas ao longo do tempo.
+- **Verificador de copy do núcleo (§5.3)** antes da revisão humana: concretude, termos e promessas proibidas, regra de preço do canal "anúncio", registro profissional, limites de caracteres e políticas.
+- Extensões completas: sitelinks, frases de destaque, snippets estruturados, imagem (somente com assets reais e de qualidade), nome e logo da marca, local.
+- **Recursos adicionais por maturidade:**
+  - **Chamada** (anúncio/extensão de ligação) — serviços urgentes; com horário de atendimento.
+  - **Formulário de lead** — baixo atrito; qualificação obrigatória via perguntas e retorno de status.
+  - **WhatsApp como destino** — via landing com botão rastreado (código na mensagem, núcleo §7.3).
+
+### M4 — Negativas
+
+- **Lista universal do segmento** vinda de `playbooks/<segmento>/negativas.md` + específicas do cliente, compartilhada entre campanhas.
+- **Varredura recorrente de termos de pesquisa**: classificação (geografia errada, intenção errada, emprego, concorrente…), justificativa, impacto em R$, aplicação só após aprovação.
+- Termos ambíguos checados pela intenção real (ex.: "contratação de X" pode ser vaga de emprego).
+
+### M5 — Landing pages em três níveis
+
+| Nível | Quando | Como |
+|---|---|---|
+| **1. Site atual + inserção dinâmica** | maturidade baixa, verba pequena, site razoável | parâmetros na URL ajustam título/subtítulo à busca; nenhum site novo |
+| **2. Template parametrizado** | padrão para a maioria | uma página por oferta com blocos trocados por intenção; identidade do `marca.yaml`, conteúdo do `ofertas/` |
+| **3. Página dedicada** | termos de maior valor/volume | Next.js → GitHub → Vercel, título repetindo a busca |
+
+Em todos os níveis:
+- Formulário ou botão de WhatsApp visível sem rolar.
+- Prova social do `marca.yaml` (preferência por depoimentos em vídeo), vídeo do responsável quando a assinatura inclui pessoa.
+- Diferenciais e respostas a objeções vindos da oferta — **a mesma fonte dos anúncios e dos fluxos de WhatsApp**.
+- Aviso de privacidade e base legal (LGPD).
+- Captura de gclid + UTMs em campos ocultos.
+- Teste A/B de páginas seguindo o protocolo de testes do núcleo.
+
+### M6 — Rastreamento e públicos
+
+- Tag do Google em todas as páginas; conversões: formulário, ligação, clique no WhatsApp, e **eventos de qualidade do Kommo** como conversões offline (núcleo §7.2).
+- Conversões otimizadas para leads (dados com hash) como complemento quando o gclid se perde.
+- Verificação automática da tag após cada publicação de página.
+- Público de visitantes para RLSA; display de remarketing apenas como teste.
+
+### M7 — Negócio local
+
+- **Perfil da Empresa no Google**: vinculado, com horário, categorias, fotos reais e avaliações monitoradas — afeta extensões de local e confiança.
+- Para serviços elegíveis, avaliar formatos de anúncio de serviços locais conforme disponibilidade na região.
+
+## 5. Monitoramento específico do Google
+
+Somam-se aos motores do núcleo:
+
+| Alerta | Gatilho |
+|---|---|
+| Orçamento limitado com CPA abaixo da meta | oportunidade de escala |
+| Queda de parcela de impressões (classificação ou orçamento) | estatística do núcleo |
+| Índice de qualidade caiu | por palavra-chave relevante |
+| Termo novo com gasto relevante sem conversão | candidato a negativa |
+| Reprovação de anúncio ou de recurso | sempre |
+| Conversão / tag sem disparar após publicação | sempre |
+| Divergência Google × CRM | conversões na plataforma muito diferentes dos leads no Kommo |
+
+## 6. Campos do Google no perfil do cliente
 
 ```yaml
 plataformas:
   google:
     customer_ids: []
-    servicos:                 # base para a matriz serviço × local
-      - nome: ""
-        ticket_medio: null
     area_atendimento:
       tipo: ""                # cliente vai até você | você vai até o cliente
       centro: ""
       raio_km: null
       cidades: []
-    horario_atendimento: ""   # define programação dos anúncios
+      excluir: []
     volume_minimo_termo: null # busca mensal mínima para entrar na matriz
-    negativas_segmento: ""    # lista universal a usar
-    concorrentes: []          # para negativar (ou não) conscientemente
+    concorrentes: []          # decisão consciente: negativar ou disputar
     landing:
+      nivel_padrao: 2         # 1 | 2 | 3
       dominio: ""
-      template: ""
+    recursos: { chamada: false, formulario_lead: false, whatsapp: true }
+    perfil_empresa_id: ""
 ```
 
-## 6. Estrutura no repositório
+Serviços, ofertas, horário e regras comerciais vêm de `ofertas/` e `marca.yaml` — sem duplicar.
+
+## 7. Estrutura no repositório
 
 ```
 plataformas/google/
-├── conector/          # cliente da API, consultas GAQL, autenticação
-├── palavras_chave/    # M1: pesquisa, triagem, matriz serviço × local
-├── estrutura/         # M2: criação de campanhas e grupos com padrões de proteção
-├── anuncios/          # M3: geração e validação de RSA + extensões
-├── negativas/         # M4: listas universais por segmento + varredura de termos
-├── landing/           # M5: template Next.js por cliente
-├── rastreamento/      # M6: tag, eventos, públicos
-└── offline/           # importação de conversões offline
+├── conector/          # API, GAQL, autenticação, normalização
+├── auditoria/         # checklist de onboarding, estimativa de desperdício
+├── palavras_chave/    # M1
+├── estrutura/         # M2
+├── anuncios/          # M3 (usa core/copy)
+├── negativas/         # M4 (usa playbooks/<segmento>/negativas.md)
+├── landing/           # M5: inserção dinâmica, template, Next.js
+├── rastreamento/      # M6
+└── local/             # M7
 skills/
-├── campanha/          # /campanha
-├── anuncios/          # /anuncios
-├── negativas/         # /negativas
-└── landing/           # /landing
+├── campanha/  ├── anuncios/  ├── negativas/  └── landing/
 ```
 
-## 7. Roadmap
+## 8. Roadmap Google
 
-1. **Acesso** — MCC, developer token, projeto no Cloud, OAuth, `.env`.
-2. **Leitura e relatórios** — normalização comum + relatório diário reaproveitando o núcleo.
-3. **M4 Negativas** — lista universal + varredura de termos (maior economia imediata).
-4. **M1 + M2** — pesquisa de palavras-chave e criação de campanhas com padrões de proteção.
-5. **M3** — gerador de RSA com validação.
-6. **M6 + conversão real** — tag, eventos, gclid no CRM, importação offline.
-7. **M5** — gerador de landing pages e testes A/B.
-8. **Auditoria e anomalias** específicas do Google.
-9. **Skills** para cada fluxo repetível.
+1. Acesso à API + auditoria de onboarding (com estimativa de desperdício).
+2. Relatório diário e alertas operacionais (usando o núcleo).
+3. M4 Negativas — maior economia imediata.
+4. M6 + eventos de qualidade do Kommo como conversões offline.
+5. M1 + M2 com padrões de proteção.
+6. M3 com verificador de copy.
+7. M5 começando pelo nível 2 (template parametrizado).
+8. M7 e auditoria semanal.
 
-## 8. Riscos e limitações
+## 9. Riscos específicos
 
-- Developer token com acesso inicial limitado; aprovação de nível superior leva tempo.
-- Volume de busca baixo (cidades pequenas, nichos) inviabiliza SKAG e testes rápidos — o perfil precisa refletir isso.
-- Publicação direta na conta é o maior risco: toda escrita passa por aprovação e fica registrada.
-- Landing pages geradas em massa precisam de revisão de conteúdo, promessas e compliance do segmento.
-- Sem conversão real, lances inteligentes otimizam para formulários, inclusive spam e leads ruins.
-- Opiniões fortes da referência (ex.: "PMax e display são sempre lixo") são tratadas como **hipóteses a testar por cliente**, não como regra.
-
-## 9. Próximos passos
-
-- [ ] Revisar este documento.
-- [ ] Configurar o acesso à API numa conta de teste.
-- [ ] Montar as listas universais de negativas por segmento.
-- [ ] Definir o esquema de normalização comum com o Meta.
+- Developer token com acesso inicial limitado; aprovação superior leva tempo.
+- Demanda baixa (cidades pequenas, nichos) limita volume e testes — a Camada 0 precisa dizer isso ao cliente antes.
+- Publicação direta na conta é o maior risco: simulação, aprovação e registro sempre.
+- Páginas geradas em massa exigem revisão de promessas e compliance do segmento.
+- Sem conversão real, lances inteligentes otimizam para formulário, inclusive spam.
+- Opiniões fortes da referência (PMax, display) são hipóteses por cliente, não regra.

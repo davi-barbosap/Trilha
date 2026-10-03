@@ -1,246 +1,166 @@
-# Sistema de Automação Meta Ads com Claude — Arquitetura v0.2
+# Sistema de Automação Meta Ads com Claude — Arquitetura v0.3
 
-> Status: rascunho de arquitetura · atualizado em 2026-10-02
+> Status: rascunho de arquitetura · 2026-10-02
+> **Leia primeiro:** [`ARQUITETURA-NUCLEO.md`](ARQUITETURA-NUCLEO.md) — estratégia, onboarding, perfil, brand kit, playbooks, conversão real, estatística e governança são compartilhados e não se repetem aqui.
+> Documento irmão: [`ARQUITETURA-GOOGLE-ADS.md`](ARQUITETURA-GOOGLE-ADS.md)
 > Referência inicial: "Claude + Facebook Ads (FULL COURSE)" — Sam Piliero / The Moonlighters, com adaptações e melhorias próprias.
-> Documento irmão: [`ARQUITETURA-GOOGLE-ADS.md`](ARQUITETURA-GOOGLE-ADS.md) — as duas plataformas compartilham núcleo, perfil do cliente e motores estatísticos.
 
 ### Changelog
-- **v0.2** — Decisão de implementação híbrida (MCP para acesso + código para lógica); camada de conectores separada; módulo de conversão real (CRM → API de Conversões); núcleo compartilhado com o Google Ads; estrutura de repositório com código.
-- **v0.1** — Arquitetura em três camadas, perfil do cliente, regras derivadas, roadmap.
+- **v0.3** — Conteúdo comum movido para o núcleo. Novos: estratégia de estrutura de conta, escolha de destino (site, formulário instantâneo, WhatsApp), auditoria de pixel/API de Conversões, framework de testes criativos com taxonomia de ângulos e métricas de criativo, proteção da fase de aprendizado, volante criativo condicionado à maturidade.
+- **v0.2** — Implementação híbrida, conectores, normalização, conversão real.
+- **v0.1** — Três camadas, perfil, regras derivadas.
 
 ---
 
-## 1. Objetivo
+## 1. Papel do Meta no sistema
 
-Construir um sistema **agnóstico de cliente**: um núcleo único de automação para Meta Ads que se adapta a qualquer cliente e branding a partir de um **perfil fornecido no onboarding**. Nenhuma regra, meta ou número de cliente é codificado no núcleo.
+O Meta **gera demanda**: alcança quem ainda não está procurando. O principal fator de desempenho é o **criativo** (argumento, gancho, formato), seguido do sinal de conversão que a conta devolve ao algoritmo. Segmentação detalhada e microgestão de lances pesam cada vez menos. A arquitetura reflete isso: o módulo criativo e o retorno de conversões são o centro; o monitoramento protege a verba.
 
-Princípios:
-- **Núcleo fixo, personalização por dados.** O núcleo consulta o perfil; nunca o contrário.
-- **Leitura livre, escrita com aprovação.** Nenhuma alteração em orçamento, anúncio ou campanha sem confirmação humana.
-- **Cálculo em código, nunca "de cabeça".** Toda métrica, linha de base e teste estatístico roda em Python/R; o modelo interpreta e recomenda.
-- **Estatística proporcional ao volume.** Limiares e janelas derivados do volume de conversões de cada conta.
-- **Conversão real acima da métrica da plataforma.** Sempre que houver fonte (CRM, planilha), ela manda.
-- **Filtro humano obrigatório** em toda decisão que envolva verba.
+## 2. Implementação
 
-## 2. Decisão de implementação: híbrida
+| Função | Ferramenta |
+|---|---|
+| Acesso aos dados | MCP oficial da Meta (via Claude Code ou chat) |
+| O que o MCP não cobrir | Marketing API (Graph API) via scripts |
+| Cálculos | núcleo (`core/estatistica`, `core/motores`) |
+| Contexto do cliente | `marca.yaml`, `ofertas/`, `avatares.md`, playbook do segmento |
+| Consultas do dia a dia | chat com o conector |
 
-| Função | Ferramenta | Por quê |
-|---|---|---|
-| Acesso aos dados da Meta | MCP oficial da Meta (via Claude Code ou chat) | Login simples, mantido pela Meta |
-| Acesso a dados fora do MCP | Marketing API (Graph API) via scripts | Cobertura completa quando o MCP for limitado |
-| Cálculos e estatística | Código no repositório (Python/R) | Determinístico, testável, versionado, econômico em tokens |
-| Contexto do cliente e fluxos | Skills + arquivos de perfil | Reaproveitável para qualquer cliente |
-| Consultas pontuais do dia a dia | Chat com o conector | Rápido para "por que o CPL subiu ontem?" |
-| Rotinas recorrentes | Tarefas agendadas apontando para os scripts | Mesmo núcleo para todos os clientes |
-
-Regra prática: **o MCP traz o dado, o código calcula, o Claude interpreta, você aprova.** Dados volumosos são processados no script e só o resumo chega ao modelo.
-
-## 3. Arquitetura em camadas
-
-```
-┌─────────────────────────────────────────────────────────┐
-│ CONECTORES          Meta MCP · Marketing API · CRM      │
-└──────────────────────────┬──────────────────────────────┘
-                           │ dados brutos
-┌──────────────────────────▼──────────────────────────────┐
-│ CAMADA 1 — NÚCLEO (compartilhado entre plataformas)     │
-│  normalização · motores · estatística · saídas · logs   │
-└──────────────────────────┬──────────────────────────────┘
-                           │ consulta
-┌──────────────────────────▼──────────────────────────────┐
-│ CAMADA 2 — PERFIL DO CLIENTE (pacote por cliente)       │
-│  negócio · métrica · metas · branding · avatares · ...  │
-└──────────────────────────┬──────────────────────────────┘
-                           │ deriva
-┌──────────────────────────▼──────────────────────────────┐
-│ CAMADA 3 — REGRAS DERIVADAS (calibração automática)     │
-│  janelas · limiares · definição de vencedor · alertas   │
-└─────────────────────────────────────────────────────────┘
-```
-
-### 3.0 Conectores
-
-**Meta MCP**
-- Conector personalizado (URL indicada na referência: `https://mcp.facebookads.com/ads`; liberação gradual — validar por conta).
-- Verificação inicial: listar contas acessíveis e quais estão habilitadas para MCP.
+**Conector MCP:** URL indicada na referência `https://mcp.facebookads.com/ads`; liberação gradual — validar por conta no onboarding.
 
 **Permissões**
-| Tipo de ferramenta | Política |
+| Ferramenta | Política |
 |---|---|
-| Insights / leitura de entidades | Sempre permitir |
-| Edição de orçamento, campanha, conjunto, anúncio | Sempre exigir aprovação |
-| Criação/publicação | Sempre exigir aprovação |
+| Insights e leitura de entidades | sempre permitir |
+| Edição de orçamento, campanha, conjunto, anúncio | sempre exigir aprovação (com simulação prévia — ver núcleo §10) |
+| Criação e publicação | sempre exigir aprovação |
 
-**Normalização.** Todo dado (Meta ou Google) é convertido para um esquema comum antes de chegar aos motores:
-`data · plataforma · conta · campanha · conjunto/grupo · anúncio · gasto · impressões · cliques · conversões · valor · campos de nomenclatura`.
-Isso permite usar os mesmos motores nas duas plataformas.
+## 3. Auditoria de onboarding (Meta)
 
-### 3.1 Camada 1 — Núcleo
+Complementa a auditoria geral do núcleo (§3.3):
 
-**Motores**
-1. **Relatórios** — pontual; histórico semanal com seção de padrões; mês corrente (MTD) com metas do perfil, publicado como artifact.
-2. **Detector de anomalias** — conta e campanha; boas e más; métricas primárias (gasto, métrica principal) e secundárias (CPM, CTR, frequência, entrega).
-3. **Detector de vencedores / potenciais** — nível de anúncio.
-4. **Recomendação criativa** — top N anúncios por gasto, com link para o Gerenciador e prévia do criativo.
-5. **Briefings e roteiros** — a partir de vencedores/potenciais + skills de branding e avatares.
-6. **Conversão real** — ver §3.4.
-7. **(Futuro)** Geração de imagem/vídeo via MCPs externos.
+- [ ] Business Manager do cliente; agência com acesso de parceiro (não dona dos ativos)
+- [ ] Pixel instalado e disparando os eventos certos; deduplicação com a API de Conversões
+- [ ] API de Conversões ativa (servidor ou via CRM) e qualidade de correspondência dos eventos
+- [ ] Domínio verificado e eventos priorizados
+- [ ] Evento de otimização atual vs. evento ideal pela maturidade (ver §5)
+- [ ] Estrutura atual: nº de campanhas/conjuntos, fragmentação, conjuntos presos em aprendizado
+- [ ] Nomenclatura compatível com a taxonomia de ângulos (núcleo §5.4)
+- [ ] Histórico de reprovações e restrições da conta; categoria especial de anúncio quando aplicável
+- [ ] Biblioteca de criativos existente, etiquetada por eixo/avatar/formato
 
-**Padrões de saída** (comuns a todos os clientes e às duas plataformas)
-- Alerta: `[severidade] plataforma · conta · nível · métrica · valor atual vs. linha de base · janela · ação sugerida`.
-- Relatório diário: resumo executivo → métrica principal vs. meta → anomalias → vencedores → recomendações.
-- Painel MTD: mesmo layout para todos os clientes.
+## 4. Estrutura de conta
 
-**Registro de decisões** — toda recomendação gera uma linha: `data · cliente · recomendação · evidência · decisão (aprovada/recusada) · resultado após N dias`. Base para calibrar limiares.
+Princípio: **consolidar** para dar volume de sinal ao algoritmo e sair rápido da fase de aprendizado.
 
-### 3.2 Camada 2 — Perfil do cliente
+| Situação do cliente | Estrutura recomendada |
+|---|---|
+| Verba na mínima viável | 1 campanha de conversão, orçamento no nível da campanha, público amplo, 3–6 criativos por eixo |
+| Verba 2–5× mínima | + 1 campanha de teste criativo separada da campanha de escala |
+| Várias ofertas (ex.: empreendimentos, cursos) | 1 campanha por oferta só quando a verba sustenta o volume mínimo por campanha; senão, ofertas agrupadas com criativos distintos |
+| Base de clientes/leads disponível | públicos semelhantes como teste contra o amplo; exclusão de clientes atuais quando o objetivo for aquisição |
+| Remarketing | só com volume de visitantes/engajamento suficiente; senão, deixar o amplo cuidar |
 
-Arquivo por cliente em `clientes/<slug>/perfil.yaml` (compartilhado com o Google Ads) + documentos de contexto.
+Fase de aprendizado: o sistema estima se cada conjunto tem volume para sair do aprendizado (referência de ~50 eventos de otimização por semana) e recomenda consolidar quando não tiver.
 
-```yaml
-cliente:
-  nome: ""
-  slug: ""
-  segmento: ""                # e-commerce, imobiliário, educação, serviço local...
-  ciclo_de_venda: ""          # imediato | curto | longo
-plataformas:
-  meta:
-    ad_account_ids: []
-    pixel_id: ""
-  google:                     # ver ARQUITETURA-GOOGLE-ADS.md
-    customer_ids: []
-metrica_principal:
-  tipo: ""                    # ROAS | CPA | CPL | CPL_QUALIFICADO
-  alvo: null
-  teto: null
-conversao_real:
-  fonte: ""                   # pixel | CRM | planilha | nenhuma
-  referencia: ""
-  retorno_para_plataforma: false   # enviar vendas/leads qualificados via API de Conversões
-volume:
-  conversoes_dia_tipicas: null
-  gasto_diario_tipico: null
-sazonalidade:
-  periodos:
-    - nome: ""
-      inicio: ""
-      fim: ""
-      tratamento: ""          # excluir_da_base | meta_propria
-nomenclatura:
-  padrao_campanha: ""         # ex.: {produto}_{funil}_{publico}
-  campos: []
-restricoes:
-  categoria_especial: null
-  compliance: []
-  promessas_proibidas: []
-entrega:
-  canal: ""                   # chat | e-mail | Slack | WhatsApp
-  horarios: []
-  fuso: "America/Maceio"
-```
+## 5. Destino e evento de otimização
 
-Documentos de contexto:
-- `branding.md` — tom de voz, paleta, tipografia, termos obrigatórios e proibidos, exemplos aprovados.
-- `avatares.md` — clusters de público: dores, objeções, gatilhos, linguagem real, ângulos de solução.
-- `historico.md` — aprendizados da conta.
+| Destino | Quando usar | Cuidados |
+|---|---|---|
+| **WhatsApp (clique para conversar)** | atendimento consultivo, ticket médio/alto, público que prefere conversar | rastrear conversa → status no Kommo; o SLA de resposta decide o resultado |
+| **Formulário instantâneo** | volume alto, baixo atrito | leads de pior qualidade; usar perguntas qualificadoras e retornar qualificação ao Meta |
+| **Site / landing page** | oferta que precisa de explicação ou prova; e-commerce | pixel + API de Conversões; coerência com o anúncio |
 
-### 3.3 Camada 3 — Regras derivadas
+**Escada de evento de otimização** (sobe conforme volume e maturidade):
+`lead` → `lead_qualificado` (status "interesse confirmado" no Kommo) → `agendamento` → `venda`.
+O sistema recomenda subir de degrau quando o evento superior atinge volume semanal suficiente.
 
-**Janelas e frequência de alerta por volume**
-| Conversões/dia | Janelas de análise | Frequência de anomalias | Gasto mínimo p/ alertar |
-|---|---|---|---|
-| ≥ 100 | 1, 3, 7 dias | até 4×/dia | baixo |
-| 20–100 | 3, 7, 14 dias | 1–2×/dia | moderado |
-| < 20 | 7, 14 dias | 1×/dia | alto + mín. de conversões |
+## 6. Módulo criativo
 
-*(Faixas iniciais — calibrar com o registro de decisões.)*
+### 6.1 Taxonomia (obrigatória)
 
-**Detecção de anomalias — método robusto**
-- Linha de base: **mediana** da janela, excluindo períodos sazonais do perfil.
-- Dispersão: **MAD** em vez de desvio-padrão.
-- Escore: `z_robusto = (x − mediana) / (1,4826 × MAD)`; alertar se `|z| > 3` (ajustável).
-- Alertas de entrega independentes de estatística: gasto zerado, conjunto parado, anúncio reprovado, orçamento esgotado antes do horário.
+Todo anúncio é nomeado e etiquetado conforme o núcleo §5.4:
+`eixo · objeção · avatar · formato · gancho · oferta · versão`
 
-**Detector de vencedores — com encolhimento bayesiano**
-- Categorias (referência):
-  - **Vencedor:** > 5% do gasto da campanha **e** métrica principal dentro da meta → replicar.
-  - **Potencial:** só uma das duas condições → ajustar.
-- Eficiência estimada com **encolhimento em direção à média da conta/campanha**:
-  - taxa de conversão: Beta-Binomial (prior a partir da conta);
-  - conversões por gasto: Gamma-Poisson.
-- Classificação por probabilidade posterior, ex.: `P(CPA < alvo) > 0,8`.
-- Janelas de 3, 7 e 14 dias; destaque para **vencedores persistentes**.
+Exemplo imobiliário: `PRECO_parcela-cabe_jovem-casal_video-corretor_pergunta_resid-x_v2`.
 
-### 3.4 Módulo de conversão real
+### 6.2 Métricas de criativo
 
-Sem ele, o sistema otimiza o que a Meta vê (cliques, leads de formulário), não o resultado do negócio.
+| Métrica | O que diz |
+|---|---|
+| Taxa de retenção nos 3 primeiros segundos | força do gancho |
+| Retenção do vídeo (ThruPlay / % assistido) | força do desenvolvimento |
+| CTR do link | força da promessa e da chamada |
+| Custo por resultado / por lead qualificado | eficiência real |
+| Taxa de qualificação por criativo (via Kommo) | se o criativo atrai o público certo |
+| Frequência e queda de desempenho ao longo do tempo | fadiga |
 
-```
-Anúncio → landing/formulário → captura de fbclid + UTMs (campos ocultos)
-       → CRM (lead + origem) → status: qualificado / vendido / valor
-       → (a) painel interno de ROAS/CPL real
-       → (b) retorno à Meta via API de Conversões (eventos de lead qualificado / compra)
-```
+Diagnóstico combinado: gancho forte + CTR fraco → promessa ou chamada fraca; CTR alto + qualificação baixa → criativo atraindo público errado.
 
-- O motor de vencedores passa a usar a conversão real quando disponível.
-- O retorno à plataforma ensina o algoritmo a buscar leads parecidos com os que viram venda.
-- Para leads de formulário instantâneo, a qualificação também pode ser reportada de volta.
+### 6.3 Framework de testes
 
-## 4. Estrutura do repositório
+- **Conceito novo** (novo eixo, avatar ou formato): busca grandes saltos; testado na campanha de teste.
+- **Iteração** (mesmo conceito, novo gancho/título/abertura): explora um vencedor.
+- Proporção inicial sugerida: ~30% da produção em conceitos novos, ~70% em iterações — ajustada pelo registro de decisões.
+- Todo teste segue o protocolo do núcleo (§9.4): hipótese, amostra mínima, duração máxima, regra de decisão.
+- Cobertura: o sistema aponta eixos do playbook sem criativo ativo ou sem teste recente.
+
+### 6.4 Vencedores e potenciais
+
+Regras de referência, avaliadas com o método do núcleo (encolhimento bayesiano, janelas por volume, correção de atraso):
+- **Vencedor:** > 5% do gasto da campanha **e** métrica principal dentro da meta → iterar.
+- **Potencial:** só uma das condições → ajustar (gancho, título, formato).
+- Análise também por **etiqueta**: quais eixos, avatares e ganchos vencem de forma persistente.
+
+### 6.5 Briefings e volante criativo
+
+Entradas: vencedores e potenciais + `marca.yaml` (voz, assinatura, identidade visual) + `ofertas/` (diferenciais concretos, objeções e respostas reais) + `avatares.md`.
+
+Saídas:
+- **Briefing de criativo:** eixo, objeção, avatar, gancho (3 opções), roteiro, prova a usar, chamada, formato, referências de assets disponíveis.
+- **Roteiro de vídeo:** do corretor/profissional quando a assinatura é `pessoa` ou `marca_pessoa`.
+- **Imagens estáticas:** via ferramenta externa de geração (MCP), sempre revisadas e passadas no verificador de copy.
+
+Condicionado à maturidade criativa (núcleo §3.2): com capacidade 0–1, o volante gera briefings simples e prioriza poucos criativos de qualidade, sem inflar a conta. Limite de criativos ativos por conjunto definido no perfil.
+
+## 7. Monitoramento específico do Meta
+
+Somam-se aos motores do núcleo:
+
+| Alerta | Gatilho |
+|---|---|
+| Conjunto preso em aprendizado / aprendizado limitado | sem volume para sair |
+| Fadiga de criativo | frequência subindo + queda de CTR/retenção no mesmo criativo |
+| CPM anômalo | estatística do núcleo (mediana/MAD, dia da semana) |
+| Reprovação ou restrição | sempre |
+| Qualidade de correspondência da API de Conversões caiu | sempre |
+| Divergência pixel × CRM | leads no Meta muito acima/abaixo dos leads no Kommo |
+
+## 8. Estrutura no repositório
 
 ```
-/
-├── ARQUITETURA-META-ADS.md
-├── ARQUITETURA-GOOGLE-ADS.md
-├── core/                       # compartilhado entre plataformas
-│   ├── SKILL.md
-│   ├── normalizacao/           # esquema comum de dados
-│   ├── estatistica/            # mediana/MAD, encolhimento bayesiano
-│   ├── motores/                # relatórios, anomalias, vencedores
-│   └── saidas/                 # templates de alerta, relatório, painel
-├── plataformas/
-│   ├── meta/
-│   │   ├── conector/           # chamadas MCP / Marketing API
-│   │   ├── criativos/          # recomendação, briefings, roteiros
-│   │   └── capi/               # retorno de conversões
-│   └── google/                 # ver ARQUITETURA-GOOGLE-ADS.md
-├── onboarding/
-│   ├── questionario.md
-│   └── template_perfil.yaml
-├── clientes/
-│   └── _exemplo/
-│       ├── perfil.yaml
-│       ├── branding.md
-│       ├── avatares.md
-│       └── historico.md
-├── logs/decisoes/
-└── .env.example                # nomes das variáveis; segredos nunca no Git
+plataformas/meta/
+├── conector/        # MCP / Marketing API, normalização para o esquema comum
+├── auditoria/       # checklist de onboarding
+├── estrutura/       # recomendações de consolidação e aprendizado
+├── criativos/       # taxonomia, métricas, testes, briefings, volante
+└── capi/            # retorno de eventos de qualidade (via Kommo)
 ```
 
-## 5. Roadmap
+## 9. Roadmap Meta
 
-1. **Fundação** — validar acesso ao MCP por conta; definir permissões; esquema de normalização.
-2. **Perfil do cliente + questionário de onboarding** (compartilhado com Google).
-3. **Relatório diário + alertas de entrega.**
-4. **Detector de anomalias robusto** (mediana/MAD, regras por volume).
-5. **Detector de vencedores** com encolhimento bayesiano.
-6. **Módulo de conversão real** (captura → CRM → API de Conversões).
-7. **Skills de contexto** (branding, avatares) e motor de briefings.
-8. **Volante criativo** com MCPs de geração de imagem/vídeo.
-9. **Registro de decisões e calibração** dos limiares.
+1. Acesso ao MCP + auditoria de onboarding.
+2. Relatório diário e alertas operacionais (usando o núcleo).
+3. Taxonomia de criativos + renomeação dos anúncios existentes.
+4. Retorno de eventos de qualidade (Kommo → API de Conversões) e escada de otimização.
+5. Métricas de criativo e framework de testes.
+6. Detector de vencedores por anúncio e por etiqueta.
+7. Briefings e volante criativo.
 
-## 6. Riscos e limitações
+## 10. Riscos específicos
 
-- Acesso ao MCP da Meta em liberação gradual.
-- Sem fonte de conversão real, o sistema otimiza a métrica da plataforma, não o resultado do negócio.
-- Excesso de criativos gerados por IA incha a conta e dilui verba.
-- Segredos (tokens, IDs) ficam fora do repositório (`.env`).
-- Tarefas agendadas dependem do ambiente em que rodam; validar confiabilidade antes de depender delas.
-- Toda decisão de verba passa por aprovação humana.
-
-## 7. Próximos passos
-
-- [ ] Revisar este documento.
-- [ ] Fechar `template_perfil.yaml` e o questionário de onboarding.
-- [ ] Definir o esquema de normalização comum (Meta + Google).
-- [ ] Testar o conector da Meta numa conta.
+- Acesso ao MCP em liberação gradual.
+- Formulário instantâneo sem qualificação gera volume enganoso.
+- Excesso de criativos fragmenta a verba e mantém conjuntos em aprendizado.
+- Categoria especial de anúncio (habitação, crédito, emprego) restringe segmentação — verificar regras vigentes por país.
+- Mudanças frequentes de estrutura reiniciam o aprendizado; daí as janelas de recomendação do núcleo.
