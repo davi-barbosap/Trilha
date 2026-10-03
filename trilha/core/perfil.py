@@ -1,4 +1,4 @@
-"""Esquema validado do perfil.yaml do cliente (núcleo §4, §7.2, §10).
+"""Esquema validado do perfil.yaml do cliente (núcleo §4, §7.2, §10; MODELO-OPERACIONAL.md).
 
 O perfil é o contrato entre o onboarding (wizard do briefing-trilha ou preenchimento
 manual) e o núcleo: nenhum módulo liga com um perfil que não passe por aqui.
@@ -15,26 +15,13 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Evento = Literal["lead", "lead_qualificado", "agendamento", "venda", "desqualificado", "reativado"]
 ModeloReceita = Literal["venda_direta", "comissao", "recorrencia"]
-Nivel = Literal["L0", "L1", "L2", "L3"]
+DiaUtil = Literal["segunda", "terca", "quarta", "quinta", "sexta"]
 Fracao = Annotated[float, Field(gt=0, le=1)]
 Positivo = Annotated[float, Field(gt=0)]
 
 # Etapas de sistema do Kommo, iguais em todas as contas.
 KOMMO_STATUS_GANHO = 142
 KOMMO_STATUS_PERDIDO = 143
-
-ACOES = (
-    "orcamento",
-    "estrutura",
-    "novos_anuncios",
-    "lances",
-    "negativas_obvias",
-    "pausar_sem_lead",
-    "aumento_acima_teto",
-    "promessa_consumidor",
-)
-ACOES_SEMPRE_L3 = ("aumento_acima_teto", "promessa_consumidor")
-
 
 class _Base(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -152,6 +139,30 @@ class Conversao(_Base):
     destinos: dict[Evento, Destino] = Field(default_factory=dict)
 
 
+class Freio(_Base):
+    """Freio de emergência (ADR-008): a única ação automática do sistema.
+
+    modo "pausar" (opção A, padrão): pausa e avisa na hora; desfazer é um clique.
+    modo "avisar" (opção B): só avisa; a pausa fica com o responsável.
+    """
+
+    modo: Literal["pausar", "avisar"] = "pausar"
+    gasto_sem_lead_multiplo: Positivo = 3.0  # × CPL máximo, desde o último lead
+    horas_rastreamento_quebrado: Positivo = 6.0  # gastando sem nenhum evento de conversão registrado
+
+
+class Operacao(_Base):
+    """Agenda dos rituais humanos com o cliente — o sistema prepara cada um na véspera."""
+
+    responsavel: str
+    dia_otimizacao: DiaUtil
+    dia_contato: DiaUtil
+    semana_reuniao: Annotated[int, Field(ge=1, le=4)]  # semana do mês da reunião mensal
+    dia_reuniao: DiaUtil = "sexta"
+    canal_contato: Literal["whatsapp", "email", "ligacao"] = "whatsapp"
+    faixa: Literal["essencial", "performance", "escala"] = "essencial"
+
+
 class Perfil(_Base):
     versao: Annotated[int, Field(ge=1)]
     vigente_desde: date
@@ -162,22 +173,8 @@ class Perfil(_Base):
     plataformas: Plataformas = Field(default_factory=Plataformas)
     crm: Crm | None = None
     conversao: Conversao = Field(default_factory=Conversao)
-    autonomia: dict[str, Nivel] = Field(default_factory=dict)
-
-    @model_validator(mode="after")
-    def _autonomia(self) -> Perfil:
-        desconhecidas = set(self.autonomia) - set(ACOES)
-        if desconhecidas:
-            raise ValueError(f"autonomia: ações desconhecidas {sorted(desconhecidas)}; válidas: {ACOES}")
-        for acao in ACOES_SEMPRE_L3:
-            if self.autonomia.get(acao, "L3") != "L3":
-                raise ValueError(f"autonomia: '{acao}' é sempre L3 (nunca automático)")
-        return self
-
-    def nivel(self, acao: str) -> Nivel:
-        if acao in ACOES_SEMPRE_L3:
-            return "L3"
-        return self.autonomia.get(acao, "L1")
+    freio: Freio = Field(default_factory=Freio)
+    operacao: Operacao | None = None
 
 
 def carregar_perfil(caminho: str | Path) -> Perfil:

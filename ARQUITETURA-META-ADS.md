@@ -1,4 +1,4 @@
-# Sistema de Automação Meta Ads com Claude — Arquitetura v0.4
+# Sistema de Automação Meta Ads com Claude — Arquitetura v0.5
 
 > Status: arquitetura + MVP em construção · 2026-10-03
 > **Leia primeiro:** [`ARQUITETURA-NUCLEO.md`](ARQUITETURA-NUCLEO.md) — estratégia, onboarding, perfil, brand kit, playbooks, conversão real, estatística e governança são compartilhados e não se repetem aqui.
@@ -6,6 +6,7 @@
 > Referência inicial: "Claude + Facebook Ads (FULL COURSE)" — Sam Piliero / The Moonlighters, com adaptações e melhorias próprias.
 
 ### Changelog
+- **v0.5** — Alinhado ao [`MODELO-OPERACIONAL.md`](MODELO-OPERACIONAL.md). Regra de "perdedor" passa a ser sugestão no dossiê semanal; pausa automática só pelo freio de emergência (ADR-008). Achados de criativo (fadiga, vencedores, diversidade) entram no dossiê, não em alertas.
 - **v0.4** — Campanhas Advantage+ como estrutura padrão a avaliar; diversidade criativa como alavanca principal de entrega; `ctwa_clid` e API de Conversões para mensagens no destino WhatsApp; GTM server-side; alternativas quando o volume não sustenta otimizar por lead qualificado; regra de vencedor relativa (substitui o limite fixo de 5% do gasto); roadmap movido para o `ROADMAP.md` único.
 - **v0.3** — Conteúdo comum movido para o núcleo. Novos: estratégia de estrutura de conta, escolha de destino (site, formulário instantâneo, WhatsApp), auditoria de pixel/API de Conversões, framework de testes criativos com taxonomia de ângulos e métricas de criativo, proteção da fase de aprendizado, volante criativo condicionado à maturidade.
 - **v0.2** — Implementação híbrida, conectores, normalização, conversão real.
@@ -119,7 +120,7 @@ A regra da referência ("> 5% do gasto da campanha") não discrimina nada com 3�
 - **Participação relativa de entrega** = participação no gasto ÷ participação esperada (1 ÷ nº de criativos ativos no conjunto). Acima de 1,5 = o algoritmo está preferindo o criativo.
 - **Vencedor:** participação relativa ≥ 1,5 **e** métrica principal dentro da meta (em baixo volume: CPL na janela de 14–28 dias ≤ máximo, com gasto mínimo de 2× CPL máximo; em alto volume: `P(CPL < máximo) > 0,8` pelo encolhimento bayesiano) → iterar.
 - **Potencial:** só uma das condições → ajustar (gancho, título, formato).
-- **Perdedor:** gasto ≥ 2× CPL máximo sem lead, ou participação relativa < 0,5 por 14 dias com métrica fora da meta → pausar (L2 quando liberado no perfil).
+- **Perdedor:** gasto ≥ 2× CPL máximo sem lead, ou participação relativa < 0,5 por 14 dias com métrica fora da meta → sugestão de pausa no dossiê semanal. Pausa automática só quando o gasto passa do limite do freio de emergência (3× CPL máximo sem lead, ADR-008).
 - Análise também por **etiqueta**: quais eixos, avatares e ganchos vencem de forma persistente.
 
 ### 6.5 Briefings e volante criativo
@@ -137,14 +138,16 @@ Condicionado à maturidade criativa (núcleo §3.2): com capacidade 0–1, o vol
 
 Somam-se aos motores do núcleo:
 
-| Alerta | Gatilho |
-|---|---|
-| Conjunto preso em aprendizado / aprendizado limitado | sem volume para sair |
-| Fadiga de criativo | frequência subindo + queda de CTR/retenção no mesmo criativo |
-| CPM anômalo | estatística do núcleo (mediana/MAD, dia da semana) |
-| Reprovação ou restrição | sempre |
-| Qualidade de correspondência da API de Conversões caiu | sempre |
-| Divergência pixel × CRM | leads no Meta muito acima/abaixo dos leads no Kommo |
+Urgências vão para o Slack na hora; o resto entra no dossiê semanal de otimização (MODELO-OPERACIONAL §3.1).
+
+| Achado | Gatilho | Vai para |
+|---|---|---|
+| Conjunto preso em aprendizado / aprendizado limitado | sem volume para sair | dossiê |
+| Fadiga de criativo | frequência subindo + queda de CTR/retenção no mesmo criativo | dossiê |
+| CPM anômalo | estatística do núcleo (mediana/MAD, dia da semana) | dossiê |
+| Reprovação ou restrição | sempre | urgência |
+| Qualidade de correspondência da API de Conversões caiu | sempre | urgência |
+| Divergência pixel × CRM | leads no Meta muito acima/abaixo dos leads no Kommo | dossiê (urgência se > 50%) |
 
 ## 8. Estrutura no repositório
 

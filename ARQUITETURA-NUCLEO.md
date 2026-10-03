@@ -1,12 +1,14 @@
-# Núcleo Compartilhado — Sistema de Automação de Mídia Paga com Claude · v0.4
+# Núcleo Compartilhado — Sistema de Automação de Mídia Paga com Claude · v0.5
 
 > Status: arquitetura + MVP em construção · 2026-10-03
+> **Quem faz o quê:** [`MODELO-OPERACIONAL.md`](MODELO-OPERACIONAL.md) — prevalece sobre este documento em caso de conflito.
 > Este documento reúne tudo o que é **comum a todas as plataformas**: estratégia, onboarding, perfil do cliente, brand kit, playbooks de segmento, conversão real, motores estatísticos, governança.
 > Módulos específicos: [`ARQUITETURA-META-ADS.md`](ARQUITETURA-META-ADS.md) · [`ARQUITETURA-GOOGLE-ADS.md`](ARQUITETURA-GOOGLE-ADS.md)
 > Ordem de construção: [`ROADMAP.md`](ROADMAP.md) (único) · Decisões: [`docs/decisoes/`](docs/decisoes/) · Integrações: [`docs/integracoes/`](docs/integracoes/)
 > Fonte do modelo de briefing de oferta e do playbook imobiliário: [`briefing-trilha`](https://github.com/beatriz-moraes082/briefing-trilha) — dependência formalizada em [ADR-005](docs/decisoes/005-dependencia-briefing-trilha.md).
 
 ### Changelog
+- **v0.5** — Modelo operacional: o sistema faz o trabalho manual e prepara; o assessor faz a otimização semanal, o contato proativo semanal, a reunião mensal e o alinhamento com a equipe. Saídas reorganizadas em torno desses rituais (dossiê de otimização, pauta de contato, pacote da reunião, ata, painel da carteira). Fim dos níveis de autonomia; freio de emergência como única ação automática (ADR-008). n8n no próprio servidor como orquestrador e trilha-api como núcleo testado (ADR-007).
 - **v0.4** — Corte de MVP e roadmap único. Correções: `modelo_receita` (comissão ≠ ticket), fórmula de verba mínima viável e viabilidade da escada de otimização, modo de baixo volume como padrão estatístico, `ctwa_clid` no WhatsApp, GA4 e GTM server-side, portais imobiliários como fonte de lead, mapa de eventos do CRM por cliente, dados de clientes fora do repositório de código, esquema validado do perfil. Novos: níveis de autonomia, ritmo de gasto (pacing), calendário sazonal, base de referência da carteira, calculadora como ferramenta comercial, especificação de Kommo e ClickUp (fila de aprovação), registro de decisões de arquitetura (ADRs), código inicial em `trilha/`.
 - **v0.3** — Documento de núcleo separado das plataformas. Novos: Camada 0 (diagnóstico e estratégia), onboarding em níveis, playbooks de segmento, brand kit em hierarquia marca → oferta (baseado no briefing-trilha), verificador de copy, taxonomia de ângulos, módulo WhatsApp, eventos de qualidade de lead via Kommo, correção de atraso de atribuição, histórico de alterações, alertas por impacto financeiro, visão consolidada entre canais, relatório ao cliente, governança e LGPD.
 - **v0.2** — Implementação híbrida (MCP + código), conectores, normalização, conversão real.
@@ -26,6 +28,7 @@
 8. **Leitura livre, escrita com aprovação**, com simulação prévia e possibilidade de reversão.
 9. **Respeito ao algoritmo.** Menos mexidas, mais bem fundamentadas; proteção da fase de aprendizado.
 10. **Filtro humano obrigatório** em toda decisão que envolva verba ou promessa ao consumidor.
+11. **O sistema prepara; o assessor decide e se relaciona.** Nenhuma mensagem sai para o cliente pelo sistema; toda otimização passa pela sessão semanal do assessor; a única ação automática é o freio de emergência (§10).
 
 ## 2. Visão geral das camadas
 
@@ -57,7 +60,7 @@
 | Peça | Decisão | Registro |
 |---|---|---|
 | Armazenamento | Postgres gerenciado para eventos, alterações e decisões; BigQuery para histórico de mídia (transferência nativa do Google Ads, exportação do Meta) | [ADR-001](docs/decisoes/001-armazenamento.md) |
-| Orquestração | Funções em contêiner (Cloud Run) acionadas por webhook (Kommo, ClickUp) e por agendador; sem ferramenta no-code no caminho crítico | [ADR-002](docs/decisoes/002-orquestracao.md) |
+| Orquestração | n8n no próprio servidor (modo fila) agenda e conecta; trilha-api decide o que custa dinheiro ou envolve dado pessoal | [ADR-007](docs/decisoes/007-n8n-orquestrador.md) · [N8N.md](docs/integracoes/N8N.md) |
 | Painel | Looker Studio sobre BigQuery (padrão); Metabase se o cliente exigir login próprio | [ADR-003](docs/decisoes/003-painel.md) |
 | Dados de clientes | Fora do repositório de código: repositório privado `trilha-clientes` ou banco; aqui só `clientes/_exemplo/` | [ADR-004](docs/decisoes/004-dados-de-clientes.md) |
 | Esquema comum | Tabela `fato_midia` diária (data, plataforma, conta, campanha, conjunto/grupo, anúncio, etiquetas da taxonomia, gasto, impressões, cliques, conversões por evento) e `fato_eventos_crm` (lead, evento, data, origem, IDs de clique) | §7 e `trilha/` |
@@ -375,7 +378,10 @@ Portais (imobiliário), indicação, orgânico e lista própria entram no CRM co
 | Conversão real | §7 | — |
 | Visão consolidada | Meta + Google + orgânico: CAC total, custo de mídia ÷ receita, participação de cada canal | evita contar a mesma venda duas vezes |
 | Alocação de verba | recomenda distribuição entre canais e ofertas pelo CAC marginal | sempre como recomendação |
-| Relatório ao cliente | narrativa mensal em linguagem de negócio, marca branca | §11 |
+| Dossiê de otimização | prepara a sessão semanal do assessor: placar, mudanças, efeito das decisões anteriores, 3–5 sugestões com simulação | MODELO-OPERACIONAL §3.1 |
+| Pauta de contato | prepara o contato proativo semanal: boa notícia, ponto de atenção, pergunta, rascunho (nunca enviado pelo sistema) | MODELO-OPERACIONAL §3.2 |
+| Pacote da reunião e ata | prepara a reunião mensal e transforma o que foi dito em tarefas e nova versão do perfil | MODELO-OPERACIONAL §3.3 |
+| Painel da carteira | prepara a reunião de equipe: semáforo por cliente, pendências por pessoa | MODELO-OPERACIONAL §3.4 |
 | Ritmo de gasto (pacing) | projeta o gasto até o fim do mês contra a verba contratada, por plataforma e campanha; avisa sub ou sobre-entrega com dias de antecedência | complementa o alerta de "orçamento esgotado cedo" |
 | Calendário sazonal | datas do segmento (lançamentos, feirões, Black Friday, matrículas) e do cliente; marca períodos fora da linha de base e antecipa ajustes de verba e criativo | `playbooks/<segmento>/playbook.yaml` + `perfil.yaml` |
 | Base de referência da carteira | benchmarks anônimos por segmento, região e plataforma (CPL, taxa de qualificação, CPM) calculados sobre todos os clientes; recalibra os padrões dos playbooks | só agregados, nunca dado de um cliente exposto a outro |
@@ -418,6 +424,7 @@ Nenhum alerta estatístico é exibido sem o mínimo de dados da faixa; abaixo di
 
 - Todo alerta mostra **R$ em risco por dia** (ou oportunidade) e é ordenado por isso.
 - Limite de alertas por relatório; o resto vai para um anexo.
+- **Fora da rotina, só urgência.** Achados não urgentes (anomalias, vencedores, oportunidades) vão para o dossiê semanal, não para o Slack.
 - **Alertas operacionais** sempre passam, independentemente de estatística: gasto zerado, entrega parada, reprovação, orçamento esgotado cedo, tag/pixel sem disparar, SLA de WhatsApp estourado.
 - Alerta logo após uma alteração registrada é anotado como "possivelmente causado por alteração de <data>".
 
@@ -429,17 +436,8 @@ Testes sem volume para atingir a amostra mínima não são abertos — o sistema
 
 ## 10. Operação, segurança e governança
 
-- **Níveis de autonomia** (configurados por cliente e por tipo de ação, no `perfil.yaml`):
-
-  | Nível | O sistema… | Exemplos |
-  |---|---|---|
-  | L0 | só lê | relatórios, auditoria |
-  | L1 | sugere; humano aprova (padrão) | orçamento, estrutura, novos anúncios, lances |
-  | L2 | aplica sozinho **dentro de limites** e avisa | negativas de categorias óbvias (emprego, grátis, concorrente já decidido); pausar anúncio com gasto ≥ 2× CPL máximo e zero lead; reativar anúncio pausado por engano dentro do mesmo dia |
-  | L3 | nunca automático | qualquer aumento de verba acima do teto contratado, promessa ao consumidor, ação em conta sem histórico |
-
-  Toda ação L2 entra no histórico de alterações, é reversível e aparece no relatório do dia. Um cliente novo começa em L1 em tudo; L2 é liberado por tipo de ação depois de 30 dias sem reversão de sugestões daquele tipo.
-- **Fila de aprovação no ClickUp:** ações L1 viram tarefas com a simulação antes → depois; mudar o status para "Aprovado" executa a ação (ver [`docs/integracoes/CLICKUP.md`](docs/integracoes/CLICKUP.md)).
+- **Nenhuma alteração sem o assessor.** Toda mudança em conta nasce como sugestão no dossiê semanal e é aprovada, ajustada ou recusada na tarefa do ClickUp ([`CLICKUP.md`](docs/integracoes/CLICKUP.md) §2). Antes de executar, o sistema confere se a conta ainda está no estado da simulação.
+- **Freio de emergência** ([ADR-008](docs/decisoes/008-freio-de-emergencia.md)), a única exceção: campanha com gasto ≥ 3× o CPL máximo desde o último lead, ou gastando há ≥ 6h sem nenhum evento de conversão. Modo `pausar` (opção A, padrão: pausa e avisa com desfazer) ou `avisar` (opção B), por cliente no `perfil.yaml`. Regra em `trilha/core/freio.py`; reativar é sempre decisão do assessor.
 - **Simulação antes de escrever:** toda alteração mostra o "antes → depois" e o impacto estimado; aplicação só após aprovação.
 - **Reversão:** toda escrita guarda o estado anterior para desfazer.
 - **Proteção do algoritmo:** recomendações agrupadas em janelas (ex.: 1–2×/semana por campanha); bloqueio de alterações estruturais durante fase de aprendizado, salvo emergência.
@@ -454,15 +452,17 @@ Testes sem volume para atingir a amostra mínima não são abertos — o sistema
 
 | Saída | Público | Frequência | Conteúdo |
 |---|---|---|---|
-| Alertas | operação | conforme volume | priorizados por R$ em risco |
-| Relatório diário | operação | diário | métrica principal vs. meta, anomalias, vencedores, ações sugeridas |
+| Urgências e freio | assessor | quando ocorre | só o que não pode esperar a sessão semanal; com R$ em risco e desfazer |
+| Leitura diária | assessor | dias úteis | a carteira em 5 linhas por cliente, no Slack |
+| Dossiê de otimização | assessor | semanal, por cliente | prepara a sessão de otimização (MODELO-OPERACIONAL §3.1) |
+| Pauta de contato | assessor | semanal, por cliente | prepara o contato proativo; rascunho que o assessor reescreve e envia |
+| Painel da carteira | assessor + equipe | semanal | prepara a reunião de equipe |
 | Painel MTD | operação | ao vivo | mesmo layout para todos os clientes |
-| Auditoria semanal | operação | semanal | o que pausar, escalar, corrigir, testar |
-| Relatório ao cliente | cliente | mensal | resultado de negócio, o que foi testado e aprendido, próximos passos — sem jargão |
-| Resumo por WhatsApp | cliente | semanal | 5 linhas (ou áudio curto): leads, qualificados, vendas, gasto vs. plano, próxima ação — o cliente de PME não abre painel |
+| Pacote da reunião | assessor (leva ao cliente) | mensal, por cliente | resultado de negócio, o que foi testado e aprendido, proposta de 30 dias, perguntas — sem jargão; o assessor revisa e conduz |
+| Ata e encaminhamentos | assessor + equipe | após cada reunião | tarefas com responsável e prazo; nova versão do perfil quando algo mudou |
 | Registro de decisões | operação | contínuo | sugestão → decisão → resultado; base de calibração |
 
-**Canais de entrega:** alertas e relatório diário vão para um canal da operação (Slack ou grupo de WhatsApp interno), com link para o painel; ações pendentes vão para a fila de aprovação no ClickUp.
+**Canais de entrega:** urgências, freio e leitura diária vão para o Slack da operação; dossiês, pautas, pacotes e atas chegam como tarefas no ClickUp. **Nada sai do sistema direto para o cliente.**
 
 **Hierarquia de métricas por cliente** (definida no perfil): métrica de negócio (vendas, CAC) → métrica principal da plataforma (CPL qualificado, ROAS) → métricas de diagnóstico (CPM, CTR, retenção de vídeo). Relatórios nunca apresentam métrica de diagnóstico como resultado.
 
@@ -472,38 +472,35 @@ Legenda: ✅ existe · 🔜 próximo no [ROADMAP](ROADMAP.md) · ⏳ depois.
 
 ```
 /
-├── README.md · ROADMAP.md · ARQUITETURA-*.md
+├── README.md · ROADMAP.md · MODELO-OPERACIONAL.md · ARQUITETURA-*.md
 ├── docs/
-│   ├── decisoes/              ✅ ADRs (armazenamento, orquestração, painel, dados de clientes, briefing-trilha, autonomia)
-│   └── integracoes/           ✅ KOMMO.md · CLICKUP.md · OUTRAS.md
-├── trilha/                    pacote Python
+│   ├── decisoes/              ✅ ADRs 001–008 (002 e 006 substituídas)
+│   └── integracoes/           ✅ N8N.md · KOMMO.md · CLICKUP.md · OUTRAS.md
+├── trilha/                    pacote Python = trilha-api
+│   ├── api.py                 ✅ HTTP para o n8n: /saude /clientes /validar /calcular /conversao /freio/avaliar
 │   ├── core/
-│   │   ├── perfil.py          ✅ esquema validado do perfil.yaml
+│   │   ├── perfil.py          ✅ esquema validado do perfil.yaml (inclui freio e operacao)
 │   │   ├── economia.py        ✅ calculadora de economia unitária, verba por degrau
+│   │   ├── freio.py           ✅ regras do freio de emergência
+│   │   ├── dossie/            🔜 montagem do dossiê, pauta, pacote da reunião, painel
 │   │   ├── normalizacao/      🔜 fato_midia / fato_eventos_crm
-│   │   ├── motores/           🔜 relatório diário, alertas operacionais, pacing · ⏳ anomalias, vencedores, alocação
-│   │   ├── estatistica/       ⏳ maturação, contagens, MAD, encolhimento, testes
 │   │   ├── historico/         🔜 registro de alterações
-│   │   ├── copy/              ⏳ verificador de copy, taxonomia de ângulos
-│   │   └── saidas/            🔜 templates de alertas e relatórios
-│   ├── conversao/
-│   │   ├── hash.py            ✅ normalização e SHA-256 de e-mail/telefone
-│   │   └── pipeline.py        ✅ webhook Kommo → eventos → envios
-│   ├── integracoes/
-│   │   ├── kommo.py           ✅ parser de webhook, leitura de lead, extração de IDs
-│   │   └── clickup.py         🔜 fila de aprovação
-│   ├── plataformas/
-│   │   ├── meta/capi.py       ✅ payload e envio da API de Conversões
-│   │   └── google/conversoes_offline.py  ✅ payload de conversão offline (envio pela biblioteca oficial: 🔜)
-│   └── __main__.py            ✅ CLI: validar · calcular · simular-webhook
+│   │   ├── estatistica/       ⏳ maturação, contagens, MAD, encolhimento, testes
+│   │   └── copy/              ⏳ verificador de copy, taxonomia de ângulos
+│   ├── conversao/             ✅ hash.py · pipeline.py (webhook Kommo → eventos → envios)
+│   ├── integracoes/           ✅ kommo.py · 🔜 clickup.py
+│   ├── plataformas/           ✅ meta/capi.py · google/conversoes_offline.py
+│   └── __main__.py            ✅ CLI: validar · calcular · simular-webhook · servir
+├── n8n/fluxos/                ✅ W01, W10 exportados · 🔜 W02–W09, W11–W14
+├── infra/                     ✅ docker-compose (n8n + worker, Postgres, Redis, trilha-api, Caddy) · backup.sh
+├── Dockerfile                 ✅ imagem da trilha-api
 ├── tests/                     ✅ unittest (sem dependência externa)
-├── playbooks/imobiliario/     ✅ playbook.yaml (demais arquivos 🔜)
+├── playbooks/imobiliario/     ✅ playbook.yaml
 ├── clientes/_exemplo/         ✅ perfil.yaml · marca.yaml · ofertas/
-├── onboarding/                ⏳ extensão do wizard do briefing-trilha
 └── .env.example               ✅
 ```
 
-Clientes reais: repositório privado `trilha-clientes` (mesma estrutura de `clientes/_exemplo/`), apontado por `TRILHA_CLIENTES_DIR`.
+Clientes reais: repositório privado `trilha-clientes` (mesma estrutura de `clientes/_exemplo/`), montado na trilha-api em `/clientes`.
 
 ## 13. Roadmap
 

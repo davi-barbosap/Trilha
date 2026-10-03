@@ -1,0 +1,107 @@
+import io
+import json
+import unittest
+from pathlib import Path
+
+from trilha.api import TrilhaApi
+from trilha.integracoes.kommo import extrair_dados_lead
+
+RAIZ = Path(__file__).resolve().parents[1]
+FIX = RAIZ / "tests" / "fixtures"
+
+
+def chamar(app, metodo, caminho, corpo=None, token="segredo"):
+    bruto = json.dumps(corpo).encode() if corpo is not None else b""
+    environ = {
+        "REQUEST_METHOD": metodo, "PATH_INFO": caminho,
+        "CONTENT_LENGTH": str(len(bruto)), "wsgi.input": io.BytesIO(bruto),
+    }
+    if token:
+        environ["HTTP_AUTHORIZATION"] = f"Bearer {token}"
+    capturado = {}
+    resposta = b"".join(app(environ, lambda status, _h: capturado.setdefault("status", int(status.split()[0]))))
+    return capturado["status"], json.loads(resposta)
+
+
+class TestApi(unittest.TestCase):
+    def setUp(self):
+        lead = json.loads((FIX / "kommo_lead.json").read_text())
+        contato = json.loads((FIX / "kommo_contato.json").read_text())
+        self.buscas = []
+
+        def obter(perfil, lead_id):
+            self.buscas.append(lead_id)
+            return extrair_dados_lead(lead, [contato], perfil.crm.campos)
+
+        self.app = TrilhaApi(token="segredo", clientes_dir=RAIZ / "clientes", obter_dados=obter, envio_real_permitido=False)
+
+    def test_saude_sem_token_e_autenticacao(self):
+        self.assertEqual(chamar(self.app, "GET", "/saude", token=None)[0], 200)
+        self.assertEqual(chamar(self.app, "POST", "/calcular", {"cliente_id": "_exemplo"}, token=None)[0], 401)
+        self.assertEqual(chamar(self.app, "POST", "/calcular", {"cliente_id": "_exemplo"}, token="errado")[0], 401)
+        self.assertEqual(chamar(TrilhaApi(token=""), "POST", "/calcular", {})[0], 500)
+
+    def test_cliente_id_seguro(self):
+        self.assertEqual(chamar(self.app, "POST", "/validar", {"cliente_id": "../etc"})[0], 400)
+        self.assertEqual(chamar(self.app, "POST", "/validar", {"cliente_id": "nao-existe"})[0], 404)
+        status, r = chamar(self.app, "POST", "/validar", {"cliente_id": "_exemplo"})
+        self.assertEqual((status, r["ok"]), (200, True))
+
+    def test_perfil_invalido_volta_422(self):
+        status, r = chamar(self.app, "POST", "/validar", {"perfil": {"versao": 1}})
+        self.assertEqual(status, 422)
+        self.assertTrue(r["detalhes"])
+
+    def test_calcular(self):
+        status, r = chamar(self.app, "POST", "/calcular", {"cliente_id": "_exemplo", "verba": 30000})
+        self.assertEqual(status, 200)
+        self.assertAlmostEqual(r["cpl_max"], 28.125)
+        self.assertEqual(r["degraus_viaveis"], ["lead", "lead_qualificado"])
+
+    def test_conversao_com_corpo_interpretado_pelo_n8n(self):
+        corpo = {"leads": {"status": [{"id": "987654", "status_id": "3333", "pipeline_id": "1111", "old_status_id": "2222"}]}}
+        status, r = chamar(self.app, "POST", "/conversao", {"cliente_id": "_exemplo", "corpo": corpo, "simular": False})
+        self.assertEqual(status, 200)
+        self.assertTrue(r["simulado"])  # ambiente não permite envio real: a requisição não consegue forçar
+        self.assertEqual(r["resumo"]["simulados"], 2)
+        self.assertEqual(self.buscas, [987654])
+        texto = json.dumps(r)
+        self.assertNotIn("98765-4321", texto)  # telefone em claro nunca volta para o n8n
+        self.assertNotIn("Email.com", texto)
+
+    def test_conversao_com_corpo_original(self):
+        corpo = (FIX / "kommo_webhook.txt").read_text()
+        status, r = chamar(self.app, "POST", "/conversao", {"cliente_id": "_exemplo", "corpo": corpo})
+        self.assertEqual((status, len(r["envios"])), (200, 2))
+
+    def test_freio(self):
+        status, r = chamar(self.app, "POST", "/freio/avaliar", {"cliente_id": "_exemplo", "campanhas": [
+            {"plataforma": "meta", "campanha_id": "c1", "gasto_desde_ultimo_lead": 200},
+        ]})
+        self.assertEqual(status, 200)
+        self.assertEqual(r["acoes"][0]["acao"], "pausar")
+        self.assertEqual(chamar(self.app, "POST", "/freio/avaliar", {"cliente_id": "_exemplo", "campanhas": [{"x": 1}]})[0], 400)
+
+    def test_clientes_ignora_exemplo_e_lista_invalidos(self):
+        import shutil, tempfile
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            shutil.copytree(RAIZ / "clientes" / "_exemplo", tmp / "_exemplo")
+            shutil.copytree(RAIZ / "clientes" / "_exemplo", tmp / "imob-a")
+            (tmp / "quebrado").mkdir()
+            (tmp / "quebrado" / "perfil.yaml").write_text("versao: 1\n")
+            app = TrilhaApi(token="segredo", clientes_dir=tmp)
+            status, r = chamar(app, "GET", "/clientes")
+            self.assertEqual(status, 200)
+            self.assertEqual([c["cliente_id"] for c in r["clientes"]], ["imob-a"])
+            self.assertEqual(r["clientes"][0]["operacao"]["dia_otimizacao"], "segunda")
+            self.assertEqual([i["cliente_id"] for i in r["invalidos"]], ["quebrado"])
+        finally:
+            shutil.rmtree(tmp)
+
+    def test_rota_inexistente(self):
+        self.assertEqual(chamar(self.app, "GET", "/nada")[0], 404)
+
+
+if __name__ == "__main__":
+    unittest.main()

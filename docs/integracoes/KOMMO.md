@@ -1,6 +1,7 @@
 # Integração Kommo
 
-> Código: `trilha/integracoes/kommo.py` · `trilha/conversao/pipeline.py` · Testes: `tests/test_kommo.py`, `tests/test_pipeline.py`
+> Código: `trilha/integracoes/kommo.py` · `trilha/conversao/pipeline.py` · `trilha/api.py` (rota `/conversao`) · Fluxo n8n: W01 ([N8N.md](N8N.md))
+> Testes: `tests/test_kommo.py`, `tests/test_pipeline.py`, `tests/test_api.py`
 > Núcleo: §7 (conversão real e qualidade de lead)
 
 ## 1. Antes de construir: o que já é nativo
@@ -16,17 +17,21 @@ O Trilha cobre o que costuma faltar: **mapa etapa → evento padronizado por cli
 ## 2. Fluxo
 
 ```
-Kommo: lead muda de etapa
-  → webhook (POST form-urlencoded) para https://<servico>/webhooks/kommo?token=<segredo>
-  → trilha.integracoes.kommo.parse_webhook()      → mudanças de etapa (lead_id, pipeline_id, status_id)
-  → trilha.conversao.pipeline.eventos_do_webhook()→ mapa do perfil.yaml → evento padrão
-  → KommoClient.buscar_lead(lead_id)               → campos personalizados + contato (API v4)
-  → extrair_dados_lead()                           → gclid, fbclid, ctwa_clid, lead_id do Meta, e-mail, telefone, valor
-  → montar envios: Meta API de Conversões · Google conversão offline
-  → enviar (modo simulação por padrão) e registrar em JSONL / fila_envios
+Kommo: lead criado ou mudou de etapa
+  → webhook para o n8n: https://<dominio>/webhook/kommo/<cliente_id>?token=<KOMMO_WEBHOOK_TOKEN>
+  → W01 confere o token, responde 200 ao Kommo na hora (o Kommo não espera processamento)
+  → W01 chama a trilha-api: POST /conversao {cliente_id, corpo: <webhook como o n8n recebeu>}
+     trilha-api (dados pessoais ficam só aqui):
+       → parse_webhook()             mudanças de etapa (aceita o corpo original ou já interpretado pelo n8n)
+       → mapa do perfil.yaml         etapa → evento padrão
+       → KommoClient.dados_lead()    campos personalizados + contatos (API v4, token KOMMO_TOKEN_<CLIENTE>)
+       → payloads com hash           Meta API de Conversões · Google conversão offline
+       → envia (só se TRILHA_SIMULAR=0) e devolve um resumo sem dado pessoal
+  → W01 avisa no Slack se algum evento foi pulado (sem identificador, perfil incompleto)
+  → falha em qualquer etapa → W10 (vigia de falhas)
 ```
 
-O Kommo não assina os webhooks: a URL leva um token secreto (`KOMMO_WEBHOOK_TOKEN`) e o endpoint rejeita chamadas sem ele.
+O Kommo não assina os webhooks: a URL leva um token secreto conferido no W01. A trilha-api não tem porta pública — só o n8n fala com ela.
 
 ## 3. Configuração por cliente (`perfil.yaml`)
 
@@ -87,7 +92,7 @@ crm:
 | Reativação de leads frios | listas para público personalizado (em hash) + fluxo de nutrição |
 | Divergência plataforma × CRM | alerta quando leads na plataforma e no Kommo se descolam |
 
-## 7. Testar localmente
+## 7. Testar localmente (sem n8n)
 
 ```bash
 python -m trilha simular-webhook tests/fixtures/kommo_webhook.txt \

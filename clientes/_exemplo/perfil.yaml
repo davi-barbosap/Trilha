@@ -65,6 +65,18 @@ conversao:
     venda:            { meta_event_name: Purchase,         google_conversion_action_id: "900000004", valor: receita }
     # desqualificado e reativado: uso interno, sem destino
 
-autonomia:              # padrão L1 (sugere, humano aprova); aumento_acima_teto e promessa_consumidor são sempre L3
-  negativas_obvias: L1
-  pausar_sem_lead: L1
+# Freio de emergência (ADR-008) — a única ação automática. Todo o resto vira sugestão no dossiê semanal.
+freio:
+  modo: pausar                    # pausar (opção A, padrão) | avisar (opção B: só avisa)
+  gasto_sem_lead_multiplo: 3      # pausa campanha que gastou 3× o CPL máximo desde o último lead
+  horas_rastreamento_quebrado: 6  # pausa campanha gastando há 6h sem nenhum evento de conversão
+
+# Agenda dos rituais humanos (MODELO-OPERACIONAL.md) — o sistema prepara cada um na véspera.
+operacao:
+  responsavel: Assessor responsável
+  faixa: performance              # essencial | performance | escala
+  dia_otimizacao: segunda
+  dia_contato: terca
+  semana_reuniao: 1               # 1ª semana do mês
+  dia_reuniao: sexta
+  canal_contato: whatsapp

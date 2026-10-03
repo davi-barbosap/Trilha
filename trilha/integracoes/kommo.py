@@ -28,16 +28,41 @@ class MudancaEtapa:
     atualizado_em: int | None = None  # unix
 
 
-def parse_webhook(corpo: str | bytes) -> list[MudancaEtapa]:
-    """Lê o POST form-urlencoded do webhook do Kommo (eventos de lead criado e de mudança de etapa)."""
+def _achatar(obj, prefixo: str = "") -> list[tuple[str, str]]:
+    """Volta um corpo já interpretado (ex.: pelo nó Webhook do n8n) para chaves no formato leads[status][0][id]."""
+    if isinstance(obj, dict):
+        itens = obj.items()
+    elif isinstance(obj, list):
+        itens = enumerate(obj)
+    else:
+        return [(prefixo, "" if obj is None else str(obj))]
+    pares = []
+    for k, v in itens:
+        k = str(k)
+        if prefixo:
+            k = k if k.startswith("[") else f"[{k}]"
+        pares += _achatar(v, prefixo + k)
+    return pares
+
+
+def parse_webhook(corpo: str | bytes | dict) -> list[MudancaEtapa]:
+    """Lê o webhook do Kommo (lead criado e mudança de etapa).
+
+    Aceita o POST form-urlencoded original ou o mesmo conteúdo já interpretado como dicionário,
+    plano ({"leads[status][0][id]": "1"}) ou aninhado ({"leads": {"status": [{"id": "1"}]}}).
+    """
     if isinstance(corpo, bytes):
         corpo = corpo.decode("utf-8")
+    if isinstance(corpo, str):
+        pares = [(k, v[0]) for k, v in parse_qs(corpo, keep_blank_values=True).items()]
+    else:
+        pares = _achatar(corpo)
     itens: dict[tuple[str, str], dict[str, str]] = {}
-    for chave, valores in parse_qs(corpo, keep_blank_values=True).items():
+    for chave, valor in pares:
         m = _CHAVE.match(chave)
         if m:
             tipo, indice, campo = m.groups()
-            itens.setdefault((tipo, indice), {})[campo] = valores[0]
+            itens.setdefault((tipo, indice), {})[campo] = valor
 
     def inteiro(v: str | None) -> int | None:
         return int(v) if v not in (None, "") else None

@@ -1,4 +1,4 @@
-# Sistema de Automação Google Ads com Claude — Arquitetura v0.4
+# Sistema de Automação Google Ads com Claude — Arquitetura v0.5
 
 > Status: arquitetura + MVP em construção · 2026-10-03
 > **Leia primeiro:** [`ARQUITETURA-NUCLEO.md`](ARQUITETURA-NUCLEO.md) — estratégia, onboarding, perfil, brand kit, playbooks, conversão real, estatística e governança são compartilhados e não se repetem aqui.
@@ -6,6 +6,7 @@
 > Referência inicial: masterclass "Claude Code + Google Ads" (Jono), com adaptações e correções próprias.
 
 ### Changelog
+- **v0.5** — Alinhado ao [`MODELO-OPERACIONAL.md`](MODELO-OPERACIONAL.md). Negativas, lances e estrutura sempre como sugestão no dossiê semanal; varredura de termos alimenta o dossiê; pausa automática só pelo freio de emergência (ADR-008).
 - **v0.4** — AI Max para Pesquisa, Demand Gen e YouTube no mapa de hipóteses; GA4 e GTM server-side no rastreamento; `gbraid`/`wbraid` além do `gclid`; payload de conversão offline e conversões otimizadas para leads em código; portais e outras origens no CAC total; roadmap movido para o `ROADMAP.md` único.
 - **v0.3** — Conteúdo comum movido para o núcleo. Novos: landing pages em três níveis, Perfil da Empresa no Google, anúncios de chamada e formulário de lead, integração com brand kit (verificador de copy, ofertas, regras comerciais), destino WhatsApp com rastreamento, negativas vindas do playbook do segmento, auditoria de onboarding.
 - **v0.2** — (sem versão própria; numeração alinhada ao núcleo e ao Meta)
@@ -138,15 +139,17 @@ Em todos os níveis:
 
 Somam-se aos motores do núcleo:
 
-| Alerta | Gatilho |
-|---|---|
-| Orçamento limitado com CPA abaixo da meta | oportunidade de escala |
-| Queda de parcela de impressões (classificação ou orçamento) | estatística do núcleo |
-| Índice de qualidade caiu | por palavra-chave relevante |
-| Termo novo com gasto relevante sem conversão | candidato a negativa |
-| Reprovação de anúncio ou de recurso | sempre |
-| Conversão / tag sem disparar após publicação | sempre |
-| Divergência Google × CRM | conversões na plataforma muito diferentes dos leads no Kommo |
+Urgências vão para o Slack na hora; o resto entra no dossiê semanal de otimização (MODELO-OPERACIONAL §3.1).
+
+| Achado | Gatilho | Vai para |
+|---|---|---|
+| Orçamento limitado com CPA abaixo da meta | oportunidade de escala | dossiê |
+| Queda de parcela de impressões (classificação ou orçamento) | estatística do núcleo | dossiê |
+| Índice de qualidade caiu | por palavra-chave relevante | dossiê |
+| Termo novo com gasto relevante sem conversão | candidato a negativa | dossiê (sugestão de negativa) |
+| Reprovação de anúncio ou de recurso | sempre | urgência |
+| Conversão / tag sem disparar após publicação | sempre | urgência (e freio, se gastando) |
+| Divergência Google × CRM | conversões na plataforma muito diferentes dos leads no Kommo | dossiê (urgência se > 50%) |
 
 ## 6. Campos do Google no perfil do cliente
 

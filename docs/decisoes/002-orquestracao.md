@@ -1,6 +1,6 @@
 # ADR-002 — Orquestração
 
-**Status:** aceita · 2026-10-03
+**Status:** substituída por [ADR-007](007-n8n-orquestrador.md) · 2026-10-03
 
 ## Contexto
 Precisamos receber webhooks (Kommo, ClickUp), rodar rotinas agendadas (relatório diário, alertas, pacing) e garantir que falha não seja silenciosa (núcleo §10).

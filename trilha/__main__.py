@@ -1,4 +1,4 @@
-"""CLI do Trilha: validar · calcular · simular-webhook."""
+"""CLI do Trilha: validar · calcular · simular-webhook · servir."""
 
 from __future__ import annotations
 
@@ -24,6 +24,10 @@ def cmd_validar(args) -> int:
     print(f"OK — perfil de '{perfil.cliente.nome}' (versão {perfil.versao}, vigente desde {perfil.vigente_desde})")
     if perfil.economia.estimados:
         print("Atenção: usando padrões do playbook (estimados) para: " + ", ".join(perfil.economia.estimados))
+    if perfil.operacao is None:
+        print("Atenção: sem bloco operacao — os dossiês, pautas e pacotes de reunião não serão agendados")
+    print(f"Freio de emergência: {perfil.freio.modo} (gasto sem lead ≥ {perfil.freio.gasto_sem_lead_multiplo:g}× CPL máximo"
+          f" ou {perfil.freio.horas_rastreamento_quebrado:g}h sem evento de conversão)")
     if perfil.crm and not perfil.crm.mapa_eventos:
         print("Atenção: crm.mapa_eventos vazio — só as etapas de sistema (142 venda, 143 perdida) serão mapeadas")
     return 0
@@ -73,6 +77,13 @@ def cmd_simular_webhook(args) -> int:
     return 0
 
 
+def cmd_servir(args) -> int:
+    from trilha.api import servir
+
+    servir(args.host, args.porta)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="trilha", description=__doc__)
     sub = p.add_subparsers(dest="comando", required=True)
@@ -92,6 +103,11 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--lead", required=True, help="JSON do lead (API v4)")
     s.add_argument("--contato", action="append", help="JSON de contato (API v4); pode repetir")
     s.set_defaults(func=cmd_simular_webhook)
+
+    s = sub.add_parser("servir", help="sobe a trilha-api (HTTP) usada pelos fluxos do n8n")
+    s.add_argument("--host", default="0.0.0.0")
+    s.add_argument("--porta", type=int, default=8080)
+    s.set_defaults(func=cmd_servir)
 
     args = p.parse_args(argv)
     try:

@@ -1,0 +1,4 @@
+# HTTPS automático na frente do n8n. A trilha-api não é exposta.
+{$N8N_DOMINIO} {
+	reverse_proxy n8n:5678
+}

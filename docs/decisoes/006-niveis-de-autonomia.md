@@ -1,6 +1,6 @@
 # ADR-006 — Níveis de autonomia
 
-**Status:** aceita · 2026-10-03
+**Status:** substituída por [ADR-008](008-freio-de-emergencia.md) · 2026-10-03
 
 ## Contexto
 A v0.3 exigia aprovação humana para toda escrita. Com 10+ clientes isso vira gargalo, e ações óbvias (negativar "vagas de emprego", pausar anúncio sem lead após gastar 2× o CPL máximo) esperam dias.
