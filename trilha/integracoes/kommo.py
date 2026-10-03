@@ -1,6 +1,6 @@
 """Integração Kommo: parser de webhook, leitura de lead (API v4) e extração de identificadores.
 
-Especificação: docs/integracoes/KOMMO.md.
+Especificação: docs/integracoes/kommo.md.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ class MudancaEtapa:
     status_id: int
     pipeline_id: int | None
     old_status_id: int | None = None
-    tipo: str = "status"  # status | add
+    tipo: str = "status"
     atualizado_em: int | None = None  # unix
 
 
@@ -103,7 +103,7 @@ class DadosLead:
     pipeline_id: int | None = None
     valor: float | None = None  # "venda" do lead no Kommo
     criado_em: int | None = None  # unix
-    ids: dict[str, str] = field(default_factory=dict)  # gclid, fbclid, ctwa_clid…
+    ids: dict[str, str] = field(default_factory=dict)
     utm: dict[str, str] = field(default_factory=dict)
     emails: list[str] = field(default_factory=list)
     telefones: list[str] = field(default_factory=list)

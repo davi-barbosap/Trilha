@@ -1,59 +1,79 @@
 # Trilha
 
-Sistema de automação de mídia paga (Meta Ads e Google Ads) com Claude, agnóstico de cliente: um núcleo único que se adapta a cada onboarding, marca e oferta.
+Sistema que executa o trabalho manual por trás dos serviços de mídia paga (Meta Ads e Google Ads) da Trilha, para que o assessor de marketing gaste o tempo dele pensando, decidindo e cuidando do cliente.
 
-**Objetivo único: executar o trabalho manual que sustenta os serviços de mídia paga.** O assessor pensa, decide e fala com o cliente; o sistema coleta, confere, calcula, devolve as conversões reais ao Meta e ao Google e deixa pronto, na véspera, o material de cada compromisso: dossiê da otimização semanal, números do relatório semanal, pacote de dados do briefing, pacote da reunião mensal e painel da carteira. Nada sai do sistema direto para o cliente.
+## O que é
 
-Landing pages, disparos em massa, fluxos de CRM, BotConversa, GA4 e captura de tarefas no ClickUp são **ferramentas paralelas**, fora deste repositório ([ECOSSISTEMA.md](ECOSSISTEMA.md)).
+Um assessor que atende vários clientes passa boa parte da semana em tarefas braçais: abrir o Gerenciador de Anúncios e o Google Ads, copiar números, conferir no Kommo quantos leads realmente viraram oportunidade, montar planilhas, comparar com a meta, levantar dados para o briefing e preparar a reunião do mês.
 
-**Status:** v0.6. Escopo, modelo operacional e arquitetura fechados; o MVP de 8 semanas aguarda o servidor autohospedado do n8n ([ROADMAP](ROADMAP.md)).
+O Trilha faz esse trabalho. Ele **não pensa a estratégia, não decide verba e não fala com o cliente** — isso é do assessor.
 
-## Documentos
+## O que faz na prática
+
+**Todos os dias, sozinho**
+- **Devolve a venda real para o Meta e o Google.** Quando o lead muda de etapa no Kommo (qualificado, visita, venda), o sistema avisa as plataformas. Assim elas aprendem a buscar gente parecida com quem compra, não só com quem clica.
+- **Coleta e confere os números** de Meta, Google e Kommo, e acompanha se a verba do mês vai sobrar ou faltar.
+- **Avisa só o que é urgente:** anúncio reprovado, campanha parada, rastreamento quebrado.
+- **Freio de emergência:** se uma campanha está gastando sem trazer nenhum lead, ou com o rastreamento quebrado, pausa e avisa na hora, com um botão para desfazer. É a única coisa que o sistema faz sem pedir. Reativar é sempre decisão do assessor.
+
+**Na véspera de cada compromisso do assessor, deixa o material pronto no ClickUp**
+
+| Compromisso do assessor | O que o sistema deixa pronto |
+|---|---|
+| Otimização semanal de cada cliente | **Dossiê:** resultado da semana pelo Kommo, o que mudou na conta, o efeito das decisões da semana anterior e os pontos de atenção com os números de cada um |
+| Relatório semanal ao cliente | **Números em três blocos** — leads, criativos e ações — para o assessor escrever a leitura dele e entregar |
+| Briefing para a equipe de criação | **Pacote de dados:** o que está convertendo, o que cansou, objeções e motivos de perda registrados no Kommo |
+| Reunião mensal com o cliente | **Pacote da reunião:** resultado do mês contra a meta, testes, decisões e efeitos |
+| Reunião de equipe | **Painel da carteira:** situação de cada cliente, freios acionados, pendências |
+
+**O que continua sendo do assessor:** estratégia, decisões de verba e criativo, criação de campanhas, contatos proativos com o cliente, respostas no grupo, a leitura dos relatórios e a condução das reuniões.
+
+**O que fica fora deste sistema** (ferramentas paralelas): landing pages, disparos em massa, fluxos de CRM, BotConversa, GA4/GTM e a captura de tarefas no ClickUp. Ver [ecossistema](docs/ecossistema.md).
+
+## Resultado esperado
+
+Cerca de **3,75 h de trabalho do assessor por cliente por semana**, contra ~7,6 h sem o sistema. Isso permite atender **~10 clientes por assessor** sem perder a qualidade do relacionamento ([modelo operacional](docs/modelo-operacional.md) §5).
+
+## Situação atual
+
+A base de código está pronta e testada: ficha validada de cada cliente, cálculo de metas, conversão real para Meta e Google, regras do freio e a API que o n8n chama. Para entrar em operação falta subir o servidor autohospedado do n8n e montar os fluxos de cada material, na ordem descrita no [roadmap](docs/roadmap.md).
+
+## Documentação
 
 | Documento | Conteúdo |
 |---|---|
-| [ECOSSISTEMA.md](ECOSSISTEMA.md) | **Comece por aqui.** O que é deste sistema, o que é do assessor, o que corre em paralelo — e o que as ferramentas paralelas precisam entregar |
-| [MODELO-OPERACIONAL.md](MODELO-OPERACIONAL.md) | O cargo de assessor e o sistema, item por item; o material de cada compromisso; capacidade realista; freio de emergência |
-| [ROADMAP.md](ROADMAP.md) | Roadmap único: MVP de 8 semanas organizado pelos rituais, e indicadores |
-| [ARQUITETURA-NUCLEO.md](ARQUITETURA-NUCLEO.md) | Comum a todas as plataformas: estratégia (Camada 0), onboarding, perfil, brand kit, playbooks, conversão real, estatística, governança |
-| [ARQUITETURA-META-ADS.md](ARQUITETURA-META-ADS.md) | Módulos específicos do Meta: estrutura de conta, Advantage+, destinos, módulo criativo |
-| [ARQUITETURA-GOOGLE-ADS.md](ARQUITETURA-GOOGLE-ADS.md) | Módulos específicos do Google: palavras-chave, campanhas, RSA, negativas, landing pages, rastreamento |
-| [docs/decisoes/](docs/decisoes/) | Registro de decisões de arquitetura (ADRs 001–009): n8n como orquestrador, freio de emergência, escopo do sistema |
-| [docs/integracoes/](docs/integracoes/) | Especificações: [n8n](docs/integracoes/N8N.md) · [Kommo](docs/integracoes/KOMMO.md) · [ClickUp](docs/integracoes/CLICKUP.md) · [outras](docs/integracoes/OUTRAS.md) |
+| [docs/ecossistema.md](docs/ecossistema.md) | O que é do sistema, do assessor e das ferramentas paralelas — e o que as paralelas precisam entregar |
+| [docs/modelo-operacional.md](docs/modelo-operacional.md) | O cargo de assessor item por item, o material de cada compromisso, capacidade, freio |
+| [docs/roadmap.md](docs/roadmap.md) | O que está pronto e o que falta para entrar em operação |
+| [docs/arquitetura/](docs/arquitetura/) | Núcleo, Meta Ads e Google Ads |
+| [docs/integracoes/](docs/integracoes/) | n8n, Kommo, ClickUp e demais ferramentas |
+| [docs/decisoes/](docs/decisoes/) | Decisões de arquitetura |
 
-## O que já roda
+## Uso técnico
 
 ```bash
 pip install -e .
 
-# valida o perfil de um cliente (esquema rígido: campo errado ou incoerente é rejeitado)
-python -m trilha validar clientes/_exemplo/perfil.yaml
-
-# calculadora de economia unitária: CAC/CPL máximos e verba por degrau da escada de otimização
-python -m trilha calcular clientes/_exemplo/perfil.yaml --verba 8000
-
-# o que um webhook do Kommo enviaria ao Meta (API de Conversões) e ao Google (conversão offline), sem enviar nada
+python -m trilha validar clientes/_exemplo/perfil.yaml      # confere a ficha de um cliente
+python -m trilha calcular clientes/_exemplo/perfil.yaml     # CAC, CPL máximos e verba por etapa
 python -m trilha simular-webhook tests/fixtures/kommo_webhook.txt \
   --perfil clientes/_exemplo/perfil.yaml \
-  --lead tests/fixtures/kommo_lead.json --contato tests/fixtures/kommo_contato.json
+  --lead tests/fixtures/kommo_lead.json --contato tests/fixtures/kommo_contato.json   # o que seria enviado, sem enviar
+python -m trilha servir --porta 8080                        # API chamada pelo n8n (exige TRILHA_API_TOKEN)
 
-# trilha-api: o núcleo por HTTP, chamado pelos fluxos do n8n
-TRILHA_API_TOKEN=um-segredo TRILHA_CLIENTES_DIR=clientes python -m trilha servir --porta 8080
-
-# testes (só biblioteca padrão + pydantic + pyyaml)
 python -m unittest discover -s tests -v
 ```
 
 ## Estrutura
 
 ```
-trilha/            pacote Python = trilha-api (core, conversao, integracoes, plataformas, api.py)
-n8n/modelos/       fluxos-modelo do n8n (W01, W10) · n8n/fluxos/: exportação diária da produção
-infra/             servidor da operação: docker-compose (n8n, Postgres, Redis, trilha-api, Caddy), backup
-tests/             testes e fixtures
+trilha/            código (API, CLI, regras, integrações)
+tests/             testes
+docs/              documentação
+n8n/modelos/       fluxos-modelo do n8n
+infra/             servidor: Docker, n8n, Postgres, Redis, HTTPS, backup
 playbooks/         padrões por segmento (imobiliário)
-clientes/_exemplo/ modelo de cliente — clientes reais ficam no repositório privado (ADR-004)
-docs/              decisões e integrações
+clientes/_exemplo/ ficha de cliente de exemplo — clientes reais ficam em repositório privado
 ```
 
-Segredos: copie `.env.example` para `.env`. O `.env` nunca é versionado.
+Segredos: copiar `.env.example` para `.env` (uso local) ou `infra/.env.example` e `infra/kommo.env.example` (servidor). Nenhum `.env` é versionado.

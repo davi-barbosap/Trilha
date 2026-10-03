@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 from trilha.core.perfil import Economia
 
-SEMANAS_POR_MES = 365.25 / 12 / 7  # ≈ 4,35
+SEMANAS_POR_MES = 365.25 / 12 / 7
 DEGRAUS = ("lead", "lead_qualificado", "agendamento", "venda")
 
 

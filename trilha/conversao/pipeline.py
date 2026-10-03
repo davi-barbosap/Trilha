@@ -24,7 +24,7 @@ FUSO_PADRAO = ZoneInfo("America/Sao_Paulo")
 
 @dataclass
 class Envio:
-    plataforma: str  # meta | google
+    plataforma: str
     evento: str
     lead_id: int
     destino: str | None = None  # URL (Meta) ou recurso (Google)
@@ -129,7 +129,7 @@ def executar(envios: list[Envio], simular: bool = True, log_dir: str | Path | No
         if e.plataforma == "meta":
             e.resposta = capi.enviar(e.destino, e.corpo, os.environ["META_ACCESS_TOKEN"])
         elif e.plataforma == "google":
-            e.pendente = "envio ao Google ainda não implementado (ROADMAP) — payload registrado"
+            e.pendente = "envio ao Google ainda não implementado (ver docs/roadmap.md) — payload registrado"
     log_dir = log_dir or os.environ.get("TRILHA_LOG_DIR")
     if log_dir:
         Path(log_dir).mkdir(parents=True, exist_ok=True)

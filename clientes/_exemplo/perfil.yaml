@@ -1,5 +1,5 @@
-# Perfil de exemplo — imobiliária fictícia. Valide com: python -m trilha validar clientes/_exemplo/perfil.yaml
-# Clientes reais NÃO ficam neste repositório (ADR-004).
+# Perfil de exemplo (imobiliária fictícia). Validar: python -m trilha validar clientes/_exemplo/perfil.yaml
+# Clientes reais ficam no repositório privado trilha-clientes (ADR-004).
 versao: 1
 vigente_desde: 2026-10-01
 
@@ -65,18 +65,17 @@ conversao:
     venda:            { meta_event_name: Purchase,         google_conversion_action_id: "900000004", valor: receita }
     # desqualificado e reativado: uso interno, sem destino
 
-# Freio de emergência (ADR-008) — a única ação automática. Todo o resto vira ponto de atenção no dossiê semanal; quem decide é o assessor.
+# Freio de emergência: a única ação automática (ADR-006).
 freio:
-  modo: pausar                    # pausar (opção A, padrão) | avisar (opção B: só avisa)
+  modo: pausar                    # pausar | avisar
   gasto_sem_lead_multiplo: 3      # pausa campanha que gastou 3× o CPL máximo desde o último lead
   horas_rastreamento_quebrado: 6  # pausa campanha gastando há 6h sem nenhum evento de conversão
 
-# Agenda do assessor (MODELO-OPERACIONAL.md) — o sistema deixa o material pronto na véspera.
-# Contatos proativos e respostas ao cliente são do assessor e não entram aqui.
+# Agenda do material que o sistema deixa pronto na véspera (docs/modelo-operacional.md).
 operacao:
   responsavel: Assessor responsável
   faixa: performance              # essencial | performance | escala
   dia_otimizacao: segunda         # dossiê de otimização na véspera
-  dia_relatorio: quinta           # números do relatório semanal (leads · criativos · ações) na véspera
+  dia_relatorio: quinta           # números do relatório semanal na véspera
   semana_reuniao: 1               # 1ª semana do mês
   dia_reuniao: sexta              # pacote da reunião dois dias úteis antes

@@ -1,4 +1,4 @@
-"""trilha-api: núcleo testado exposto por HTTP para o n8n (ADR-007).
+"""trilha-api: núcleo testado exposto por HTTP para o n8n (ADR-002).
 
 Regra de divisão: o que custa dinheiro ou envolve dado pessoal é decidido aqui;
 o n8n agenda, conecta e entrega. Dados pessoais de leads nunca passam pelo n8n:
@@ -89,8 +89,6 @@ class TrilhaApi:
             ("POST", "/freio/avaliar"): self.freio,
         }
 
-    # --- infraestrutura -------------------------------------------------------------------
-
     def __call__(self, environ, start_response):
         metodo, caminho = environ["REQUEST_METHOD"], environ.get("PATH_INFO", "/").rstrip("/") or "/"
         try:
@@ -162,8 +160,6 @@ class TrilhaApi:
         conta = subdominio_do_webhook(dados["corpo"])
         if conta is not None and conta != perfil.crm.subdominio:
             raise ErroHttp(403, f"webhook da conta Kommo '{conta}', esperado '{perfil.crm.subdominio}'")
-
-    # --- rotas ----------------------------------------------------------------------------
 
     def saude(self, _dados):
         return {"ok": True, "versao": __version__, "envio_real_permitido": self.envio_real_permitido}

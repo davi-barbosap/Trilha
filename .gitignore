@@ -1,26 +1,21 @@
 # Segredos
 .env
+infra/.env
+infra/kommo.env
 *.pem
 credenciais*.json
 
-# Dados de clientes ficam no repositório privado trilha-clientes (ADR-004)
+# Clientes reais ficam no repositório privado trilha-clientes (ADR-004)
 clientes/*
 !clientes/_exemplo/
-!clientes/README.md
 
-# Logs locais do pipeline
+# Gerados
 logs/
 *.jsonl
-
-# Python
+infra/backup/
 __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
 build/
 dist/
-
-# Infra
-infra/.env
-infra/kommo-tokens.env
-infra/backup/

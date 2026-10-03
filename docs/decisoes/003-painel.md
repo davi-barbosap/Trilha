@@ -1,6 +1,6 @@
 # ADR-003 — Painel
 
-**Status:** aceita · 2026-10-03
+**Status:** aceita
 
 ## Decisão
 **Looker Studio** sobre o BigQuery como painel MTD padrão — gratuito, compartilhável com o cliente, mesmo layout para todos. **Metabase** quando o cliente exigir login próprio ou filtros que o Looker Studio não suporte bem.

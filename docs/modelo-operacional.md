@@ -1,8 +1,7 @@
-# Modelo Operacional — quem faz o quê · v0.6
+# Modelo operacional — quem faz o quê
 
-> Status: aceito · 2026-10-03
-> Escopo do sistema e ferramentas paralelas: [`ECOSSISTEMA.md`](ECOSSISTEMA.md) · Técnico: [`ARQUITETURA-NUCLEO.md`](ARQUITETURA-NUCLEO.md) · Orquestração: [`docs/integracoes/N8N.md`](docs/integracoes/N8N.md)
-> Decisões: [ADR-007](docs/decisoes/007-n8n-orquestrador.md) (n8n), [ADR-008](docs/decisoes/008-freio-de-emergencia.md) (freio), [ADR-009](docs/decisoes/009-escopo-do-sistema.md) (escopo)
+> Escopo do sistema e ferramentas paralelas: [ecossistema](ecossistema.md) · Técnico: [núcleo](arquitetura/nucleo.md) · Orquestração: [n8n](integracoes/n8n.md)
+> Decisões: [ADR-002](decisoes/002-n8n-orquestrador.md) (n8n), [ADR-006](decisoes/006-freio-de-emergencia.md) (freio), [ADR-007](decisoes/007-escopo-do-sistema.md) (escopo)
 
 ## 1. Princípio
 
@@ -21,7 +20,7 @@ Responsabilidades e indicadores do cargo de Assessor de Marketing, e o que o sis
 | **Relatórios** — análises semanais e mensais com insights | escreve os insights e apresenta | números e gráficos do relatório semanal (leads · criativos · ações) e do pacote mensal |
 | **Atendimento** — principal ponto de contato | **100% humano** | — |
 | **CRM** — jornada do lead no funil | acompanha e cobra o time comercial do cliente | conversão real e dados do funil do Kommo nos relatórios |
-| **Automações** — fluxos de CRM, disparos, landing pages | configura | **fora deste sistema** — ferramentas paralelas ([ECOSSISTEMA.md](ECOSSISTEMA.md)) |
+| **Automações** — fluxos de CRM, disparos, landing pages | configura | **fora deste sistema** — ferramentas paralelas ([ecossistema](ecossistema.md)) |
 | KPI: 1 otimização semanal por cliente | faz | dossiê na véspera |
 | KPI: ≥ 1 reunião mensal por cliente | conduz | pacote dois dias úteis antes |
 | KPI: feedbacks semanais (leads, criativos, ações) | dá o feedback | o relatório semanal traz os números dos três blocos |
@@ -87,7 +86,7 @@ Responsabilidades e indicadores do cargo de Assessor de Marketing, e o que o sis
 
 ## 4. Freio de emergência
 
-A única ação sem aprovação prévia ([ADR-008](docs/decisoes/008-freio-de-emergencia.md)). Protege a verba entre as sessões semanais, à noite e no fim de semana.
+A única ação sem aprovação prévia ([ADR-006](decisoes/006-freio-de-emergencia.md)). Protege a verba entre as sessões semanais, à noite e no fim de semana.
 
 | Gatilho | Padrão (configurável no `perfil.yaml`) |
 |---|---|
@@ -118,7 +117,7 @@ Horas do assessor por cliente por semana:
 
 - **8 clientes ≈ 30 h por semana** com o sistema, contra ~60 h sem ele.
 - **Teto saudável: cerca de 10 clientes por assessor.** O sistema corta o trabalho de levantar e organizar dados; o relacionamento e a execução criativa continuam tomando tempo, e é assim que deve ser.
-- Estimativas de partida. A semana 5 do [ROADMAP](ROADMAP.md) mede as horas reais.
+- Estimativas de partida, a confirmar com as horas medidas no cliente piloto.
 
 ## 6. Agenda de referência para 8 clientes
 
@@ -158,4 +157,4 @@ Medem se o sistema está cumprindo o papel dele (os indicadores do cargo são do
 |---|---|
 | **Assessor** | tudo da coluna "o assessor" da §2 |
 | **Analista** (quando houver) | criação e subida de campanhas aprovadas, organização de criativos |
-| **Responsável técnico** (interno ou freelancer) | n8n, trilha-api, credenciais, backups — segue o runbook de [N8N.md](docs/integracoes/N8N.md); também é o ponto de contato com quem cuida das ferramentas paralelas |
+| **Responsável técnico** (interno ou freelancer) | n8n, trilha-api, credenciais, backups — segue o runbook de [n8n](integracoes/n8n.md); também é o ponto de contato com quem cuida das ferramentas paralelas |

@@ -1,6 +1,6 @@
-# Ecossistema Trilha — o que é deste sistema, o que é do assessor, o que corre em paralelo · v0.6
+# Ecossistema — o que é deste sistema, o que é do assessor, o que corre em paralelo
 
-> Status: aceito · 2026-10-03 · Decisão: [ADR-009](docs/decisoes/009-escopo-do-sistema.md)
+> Decisão: [ADR-007](decisoes/007-escopo-do-sistema.md)
 > Este documento delimita o escopo. Quando outro documento contradisser, vale este.
 
 ## 1. Objetivo único deste sistema
@@ -28,12 +28,12 @@ O Trilha não constrói essas ferramentas, mas depende do que elas gravam. Sem i
 
 | Ferramenta paralela | Precisa entregar ao Trilha | Por quê |
 |---|---|---|
-| **Landing pages** | campos ocultos com `gclid`, `gbraid`, `wbraid`, `fbclid` e UTMs, gravados nos campos personalizados do lead no Kommo ([KOMMO.md](docs/integracoes/KOMMO.md) §4) | sem o identificador de clique, a venda não volta para o Google/Meta |
+| **Landing pages** | campos ocultos com `gclid`, `gbraid`, `wbraid`, `fbclid` e UTMs, gravados nos campos personalizados do lead no Kommo ([Kommo](integracoes/kommo.md) §4) | sem o identificador de clique, a venda não volta para o Google/Meta |
 | **BotConversa** | quando atender a conversa vinda de anúncio de clique para WhatsApp, repassar o `ctwa_clid` e as UTMs ao lead no Kommo; mover o lead nas etapas padronizadas | sem o `ctwa_clid`, a qualificação da conversa não volta para o Meta |
 | **GA4 / GTM** | tag do Google e pixel do Meta funcionando nas páginas; eventos de conversão do site; `event_id` compartilhado entre pixel e servidor quando houver API de Conversões no site | o freio de emergência usa "horas sem evento de conversão"; deduplicação no Meta |
 | **Fluxos de CRM (Kommo)** | etapas do funil padronizadas e estáveis (o mapa etapa → evento depende dos IDs); motivo de perda obrigatório | mapa de eventos (`crm.mapa_eventos`) e bloco "leads" do relatório |
 | **Captura de tarefas (n8n)** | tarefas no ClickUp com o cliente identificado (pasta do cliente) | painel da carteira lê tarefas atrasadas por pessoa |
-| **Onboarding (briefing-trilha)** | `perfil.yaml`, `marca.yaml`, `ofertas/*.yaml` que passam no `python -m trilha validar` | contrato de dados ([ADR-005](docs/decisoes/005-dependencia-briefing-trilha.md)) |
+| **Onboarding (briefing-trilha)** | `perfil.yaml`, `marca.yaml`, `ofertas/*.yaml` que passam no `python -m trilha validar` | contrato de dados ([ADR-005](decisoes/005-dependencia-briefing-trilha.md)) |
 
 Mudou uma etapa no Kommo, um campo oculto da página ou o fluxo do BotConversa? Avisar quem cuida do Trilha: o mapa de eventos e o W01 precisam acompanhar.
 

@@ -1,6 +1,6 @@
 # Integração ClickUp
 
-> Quem faz o quê: [MODELO-OPERACIONAL.md](../../MODELO-OPERACIONAL.md) · Escopo: [ECOSSISTEMA.md](../../ECOSSISTEMA.md) · Fluxos: [N8N.md](N8N.md) (W06, W07, W08, W11, W12, W14)
+> Quem faz o quê: [modelo operacional](../modelo-operacional.md) · Escopo: [ecossistema](../ecossistema.md) · Fluxos: [n8n](n8n.md) (W06, W07, W08, W11, W12, W14)
 > Princípio: o ClickUp é **a mesa de trabalho do assessor**. O material que o sistema prepara chega como tarefa; a decisão do assessor é tomada na tarefa. O Trilha não tem tela própria.
 
 ## 1. Espaço padrão
@@ -17,7 +17,7 @@ Espaço "Trilha"
 └── Lista "Decisões"                 ← o que o assessor decidiu → o que aconteceu, todas as contas
 ```
 
-Demais listas da operação (demandas do cliente, criação, onboarding) seguem o padrão da equipe e são alimentadas pela **automação paralela de captura de tarefas** ([ECOSSISTEMA.md](../../ECOSSISTEMA.md)), não por este sistema.
+Demais listas da operação (demandas do cliente, criação, onboarding) seguem o padrão da equipe e são alimentadas pela **automação paralela de captura de tarefas** ([ecossistema](../ecossistema.md)), não por este sistema.
 
 ## 2. Sessão semanal de otimização (W12 → W06)
 
@@ -31,7 +31,7 @@ pelo modelo "Ação" (plataforma, entidade, mudança) e muda o status para "Apro
   W06 confere a assinatura do webhook do ClickUp e se a entidade ainda está no estado "antes";
       executa, registra no histórico de alterações e comenta o resultado.
   Se a conta mudou entre o dossiê e a aprovação, não executa e devolve a subtarefa com a diferença.
-Campanhas e anúncios novos o assessor cria direto nas plataformas (subida pelo sistema: Fase 2).
+Campanhas e anúncios novos o assessor cria direto nas plataformas (subida pelo sistema: evolução futura, ver roadmap).
 ```
 
 ## 3. Relatório semanal (W07)
@@ -52,4 +52,4 @@ Tarefa semanal em "Carteira": semáforo por cliente, freio acionado na semana, t
 
 ## 7. Implementação
 
-API v2 do ClickUp com token em `.env` (`CLICKUP_TOKEN`); webhooks do ClickUp com assinatura conferida (`CLICKUP_WEBHOOK_SECRET`). Os gatilhos rodam nos fluxos do n8n ([N8N.md](N8N.md)); a decisão de executar (estado "antes" igual, valor dentro do teto contratado) passa pela trilha-api.
+API v2 do ClickUp com token em `.env` (`CLICKUP_TOKEN`); webhooks do ClickUp com assinatura conferida (`CLICKUP_WEBHOOK_SECRET`). Os gatilhos rodam nos fluxos do n8n ([n8n](n8n.md)); a decisão de executar (estado "antes" igual, valor dentro do teto contratado) passa pela trilha-api.

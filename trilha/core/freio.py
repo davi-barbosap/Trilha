@@ -1,4 +1,4 @@
-"""Freio de emergência (ADR-008): protege a verba entre as sessões semanais de otimização.
+"""Freio de emergência (ADR-006): protege a verba entre as sessões semanais de otimização.
 
 Só dois gatilhos, ambos de "dinheiro saindo sem retorno possível". Todo o resto
 vira ponto de atenção no dossiê semanal, decidido pelo assessor.
@@ -26,7 +26,7 @@ class MetricaCampanha(BaseModel):
     plataforma: Literal["meta", "google"]
     campanha_id: str
     nome: str = ""
-    ativa: StrictBool = True  # "false" em texto é recusado, não interpretado como verdadeiro
+    ativa: StrictBool = True
     gasto_desde_ultimo_lead: NaoNegativo = 0.0
     horas_sem_evento_conversao: NaoNegativo | None = None  # None = não medido
     gasto_ultimas_horas: NaoNegativo = 0.0  # gasto na mesma janela de horas_sem_evento_conversao
@@ -34,11 +34,11 @@ class MetricaCampanha(BaseModel):
 
 @dataclass
 class AcaoFreio:
-    acao: str  # pausar | avisar
+    acao: str
     plataforma: str
     campanha_id: str
     nome: str
-    gatilho: str  # gasto_sem_lead | rastreamento_quebrado
+    gatilho: str
     motivo: str
     valor_em_risco: float
 

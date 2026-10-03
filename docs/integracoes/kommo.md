@@ -1,6 +1,6 @@
 # Integração Kommo
 
-> Código: `trilha/integracoes/kommo.py` · `trilha/conversao/pipeline.py` · `trilha/api.py` (rota `/conversao`) · Fluxo n8n: W01 ([N8N.md](N8N.md))
+> Código: `trilha/integracoes/kommo.py` · `trilha/conversao/pipeline.py` · `trilha/api.py` (rota `/conversao`) · Fluxo n8n: W01 ([n8n](n8n.md))
 > Testes: `tests/test_kommo.py`, `tests/test_pipeline.py`, `tests/test_api.py`
 > Núcleo: §7 (conversão real e qualidade de lead)
 
@@ -12,7 +12,7 @@ Verificar na conta do cliente, porque o que for nativo não precisa de código:
 - Formulários de site do Kommo (capturam UTMs).
 - Integrações de eventos com o Meta disponíveis no marketplace do Kommo.
 
-O Trilha cobre o que costuma faltar: **mapa etapa → evento padronizado por cliente, retorno para Meta e Google com deduplicação, registro no banco e alertas**. Fluxos de atendimento, nutrição e disparos no Kommo **não** são deste sistema ([ECOSSISTEMA.md](../../ECOSSISTEMA.md)).
+O Trilha cobre o que costuma faltar: **mapa etapa → evento padronizado por cliente, retorno para Meta e Google com deduplicação, registro no banco e alertas**. Fluxos de atendimento, nutrição e disparos no Kommo **não** são deste sistema ([ecossistema](../ecossistema.md)).
 
 ## 2. Fluxo
 

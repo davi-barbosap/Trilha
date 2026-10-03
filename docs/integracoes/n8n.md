@@ -1,6 +1,6 @@
 # n8n — orquestração da operação
 
-> Decisão: [ADR-007](../decisoes/007-n8n-orquestrador.md) · Quem faz o quê: [MODELO-OPERACIONAL.md](../../MODELO-OPERACIONAL.md) · Escopo: [ECOSSISTEMA.md](../../ECOSSISTEMA.md)
+> Decisão: [ADR-002](../decisoes/002-n8n-orquestrador.md) · Quem faz o quê: [modelo operacional](../modelo-operacional.md) · Escopo: [ecossistema](../ecossistema.md)
 > Infra: [`infra/`](../../infra/) · Fluxos-modelo escritos à mão: [`n8n/modelos/`](../../n8n/modelos/) · Fluxos em produção (exportação diária): `n8n/fluxos/` · Núcleo chamado pelos fluxos: `trilha/api.py`
 > Versão-alvo: **n8n 2.x** autohospedado.
 
@@ -19,9 +19,9 @@ ClickUp gatilho ►│ W06 Execução do aprovado ──────► /calcula
           ClickUp (dossiês, relatórios, pacotes) · Slack (urgências, freio, falhas) · Postgres · BigQuery → Looker Studio
 ```
 
-Regra de divisão (ADR-007): erro que custa dinheiro ou expõe dado pessoal → trilha-api, com teste. Erro que só atrasa uma entrega → pode ficar no n8n.
+Regra de divisão (ADR-002): erro que custa dinheiro ou expõe dado pessoal → trilha-api, com teste. Erro que só atrasa uma entrega → pode ficar no n8n.
 
-**Na mesma instância, mas fora deste sistema** ([ECOSSISTEMA.md](../../ECOSSISTEMA.md)): a automação paralela de captura de tarefas no ClickUp no mesmo dia pode rodar no mesmo n8n, como projeto separado, sem depender da trilha-api.
+**Na mesma instância, mas fora deste sistema** ([ecossistema](../ecossistema.md)): a automação paralela de captura de tarefas no ClickUp no mesmo dia pode rodar no mesmo n8n, como projeto separado, sem depender da trilha-api.
 
 ## 2. Mapa de fluxos
 
@@ -29,7 +29,7 @@ Cada fluxo é **um só para toda a carteira**: pede a lista de clientes à trilh
 
 | Fluxo | Serve a | Disparo | Faz | Status |
 |---|---|---|---|---|
-| **W01** Conversão real | base de tudo | webhook do Kommo `…/webhook/kommo/<cliente_id>?token=<segredo do cliente>` | responde 200 ao Kommo na hora; chama `/conversao`, que confere o segredo do cliente, a conta Kommo e a etapa real do lead; avisa no Slack se algo foi pulado | ✅ modelo (`n8n/modelos/W01-conversao-real.json`) |
+| **W01** Conversão real | base de tudo | webhook do Kommo `…/webhook/kommo/<cliente_id>?token=<segredo do cliente>` | responde 200 ao Kommo na hora; chama `/conversao`, que confere o segredo do cliente, a conta Kommo e a etapa real do lead; avisa no Slack se algo foi pulado | ✅ modelo (`n8n/modelos/w01-conversao-real.json`) |
 | **W02** Coleta | dossiê, relatório, pacotes | diário 05:00 | Meta Insights + Google (GAQL) + Kommo por cliente → BigQuery | ⬜ |
 | **W03** Urgências + freio | freio de emergência | a cada 2 h, 07–23 h, todos os dias | métricas do dia → `/freio/avaliar` → pausa (modo A) ou só avisa (modo B) → Slack com desfazer; também: gasto zerado, entrega parada, reprovação | ⬜ (regra pronta na API) |
 | **W04** Pacing | dossiê | diário 06:00 | projeção do gasto do mês × verba contratada | ⬜ |
@@ -37,14 +37,14 @@ Cada fluxo é **um só para toda a carteira**: pede a lista de clientes à trilh
 | **W06** Execução do aprovado | otimização semanal | gatilho do ClickUp (status → "Aprovado") | confere se a conta ainda está no estado "antes", executa a mudança simples aprovada, registra, comenta o resultado | ⬜ |
 | **W07** Relatório semanal | relatório ao cliente | véspera de `operacao.dia_relatorio`, 16:00 | números e gráficos em três blocos (leads · criativos · ações) → tarefa no ClickUp. **Não envia nada ao cliente.** | ⬜ |
 | **W08** Pacote de briefing | briefing de criativo | com o dossiê e sob demanda (status no ClickUp) | o que converte e o que cansou, objeções e motivos de perda, modelo de briefing pré-preenchido | ⬜ |
-| **W10** Vigia de falhas | todos | fluxo de erro global | toda falha vira aviso no Slack com etapa, erro e link da execução | ✅ modelo (`n8n/modelos/W10-vigia-de-falhas.json`) |
+| **W10** Vigia de falhas | todos | fluxo de erro global | toda falha vira aviso no Slack com etapa, erro e link da execução | ✅ modelo (`n8n/modelos/w10-vigia-de-falhas.json`) |
 | **W11** Pacote da reunião | reunião mensal | 2 dias úteis antes da reunião | resultado × meta vigente, testes, decisões e efeito, números para a proposta → documento no ClickUp/Drive | ⬜ |
 | **W12** Dossiê de otimização | otimização semanal | véspera de `operacao.dia_otimizacao`, 16:00 | placar, mudanças, decisões anteriores e efeito, pontos de atenção com simulação, testes, freio, funil do cliente → tarefa no ClickUp | ⬜ |
 | **W14** Painel da carteira | alinhamento com a equipe | véspera da reunião de equipe | semáforo por cliente, freio da semana, tarefas atrasadas e criativos pendentes (ClickUp), tokens perto de vencer | ⬜ |
 
 Números W09 e W13 ficaram livres: pertenciam ao onboarding e à ata→tarefas, que hoje são ferramentas paralelas.
 
-**Prioridade de construção:** ver [ROADMAP](../../ROADMAP.md).
+**Prioridade de construção:** ver [roadmap](../roadmap.md).
 
 ## 3. Volume e custo (8 clientes, ~300 leads/mês cada)
 
@@ -70,7 +70,7 @@ Com fluxos copiados por cliente, o total passaria de 12 mil só nos fluxos agend
 ## 4. Os dez requisitos de operação profissional
 
 1. **Fluxos com parâmetros, nunca copiados por cliente.**
-2. **Credenciais organizadas:** Meta — um usuário do sistema por Business Manager, token sem expiração, permissão de escrita só se o freio estiver no modo A; Google — uma credencial na MCC para a Google Ads API (coleta e alterações) e OAuth com escopo da Data Manager API (conversões offline), **app OAuth publicado em produção** (em modo "teste" o token de atualização expira em 7 dias); Kommo — **um par por cliente** em `infra/kommo-tokens.env`: token da API e segredo do webhook, nunca reutilizados entre clientes (o admin do Kommo de cada cliente enxerga a URL do webhook). Validade registrada e avisada no W14.
+2. **Credenciais organizadas:** Meta — um usuário do sistema por Business Manager, token sem expiração, permissão de escrita só se o freio estiver no modo A; Google — uma credencial na MCC para a Google Ads API (coleta e alterações) e OAuth com escopo da Data Manager API (conversões offline), **app OAuth publicado em produção** (em modo "teste" o token de atualização expira em 7 dias); Kommo — **um par por cliente** em `infra/kommo.env`: token da API e segredo do webhook, nunca reutilizados entre clientes (o admin do Kommo de cada cliente enxerga a URL do webhook). Validade registrada e avisada no W14.
 3. **Fluxo de erro global:** todo fluxo aponta para o W10 em *Settings → Error workflow*.
 4. **Vigia externo:** um serviço fora do servidor (ex.: monitor de "batimento") recebe um ping ao fim do W02 e do W03; sem ping no horário, avisa. O n8n não consegue avisar que ele mesmo caiu.
 5. **LGPD no histórico de execuções:** `EXECUTIONS_DATA_SAVE_ON_SUCCESS=none`, limpeza após 7 dias, e dados pessoais tratados só na trilha-api (o W01 nunca vê telefone ou e-mail).
@@ -89,22 +89,22 @@ No n8n 2.x, `N8N_BLOCK_ENV_ACCESS_IN_NODE` vem como `true` (nós não leem vari�
 | Sintoma | Onde olhar | Ação |
 |---|---|---|
 | Aviso do W10 no Slack | link da execução no aviso | ler a etapa e o erro; 401/403 = credencial; 429 = limite da API (o fluxo tenta de novo); 5xx = indisponibilidade da plataforma |
-| W01 avisa "lead sem identificador" com frequência | campos `gclid`/`fbclid`/`ctwa_clid` no Kommo do cliente | acionar quem cuida das landing pages, do GTM e do BotConversa: o contrato de interface não está sendo cumprido ([ECOSSISTEMA.md](../../ECOSSISTEMA.md) §3) |
+| W01 avisa "lead sem identificador" com frequência | campos `gclid`/`fbclid`/`ctwa_clid` no Kommo do cliente | acionar quem cuida das landing pages, do GTM e do BotConversa: o contrato de interface não está sendo cumprido ([ecossistema](../ecossistema.md) §3) |
 | W01 avisa "etapa não confirmada no Kommo" | etapa atual do lead no Kommo | normal se o lead mudou de etapa em segundos; frequente = alguém está movendo leads em massa ou o webhook está forjado (W10 mostra 403 em tentativas recusadas) |
 | `/conversao` responde 403 | aviso do W10 | segredo errado na URL do Kommo daquele cliente, ou chamada vinda de outra conta Kommo |
 | W01 avisa "perfil sem …" | `perfil.yaml` do cliente em `trilha-clientes` | completar o bloco e rodar `python -m trilha validar` |
 | Evento desconhecido do Kommo (etapa nova) | `crm.mapa_eventos` | o cliente criou/renomeou etapa: atualizar o mapa |
 | Sem leitura diária (W05) às 08h | vigia externo / `docker compose ps` | reiniciar o serviço; se o banco caiu, restaurar do backup |
 | Freio pausou campanha | aviso no Slack | decidir na hora (desfazer) ou na sessão semanal; nunca deixar sem decisão até a sessão |
-| Token do Kommo expirando (W14) | painel da carteira | gerar novo token na conta do cliente e atualizar `infra/kommo-tokens.env`; reiniciar a trilha-api |
+| Token do Kommo expirando (W14) | painel da carteira | gerar novo token na conta do cliente e atualizar `infra/kommo.env`; reiniciar a trilha-api |
 | Restaurar do zero | `infra/backup/` + `N8N_ENCRYPTION_KEY` guardada fora do servidor | subir o compose, restaurar o `pg_dump`, conferir credenciais |
 
 ## 7. Importar os fluxos-modelo
 
 1. Criar a credencial **Header Auth** "trilha-api" (`Authorization` = `Bearer <TRILHA_API_TOKEN>`).
-2. Importar `n8n/modelos/W10-vigia-de-falhas.json` primeiro; anotar o ID gerado.
-3. Importar `n8n/modelos/W01-conversao-real.json`; no nó "trilha-api /conversao", selecionar a credencial; em *Settings → Error workflow*, apontar para o W10 (o arquivo traz o marcador `DEFINIR_ID_DO_W10_APOS_IMPORTAR`).
-4. Para cada cliente: gerar um segredo longo e aleatório, gravar como `KOMMO_WEBHOOK_TOKEN_<CLIENTE>` em `infra/kommo-tokens.env` e cadastrar no Kommo dele o webhook `https://<dominio>/webhook/kommo/<cliente_id>?token=<segredo>` para lead criado e mudança de etapa.
+2. Importar `n8n/modelos/w10-vigia-de-falhas.json` primeiro; anotar o ID gerado.
+3. Importar `n8n/modelos/w01-conversao-real.json`; no nó "trilha-api /conversao", selecionar a credencial; em *Settings → Error workflow*, apontar para o W10 (o arquivo traz o marcador `DEFINIR_ID_DO_W10_APOS_IMPORTAR`).
+4. Para cada cliente: gerar um segredo longo e aleatório, gravar como `KOMMO_WEBHOOK_TOKEN_<CLIENTE>` em `infra/kommo.env` e cadastrar no Kommo dele o webhook `https://<dominio>/webhook/kommo/<cliente_id>?token=<segredo>` para lead criado e mudança de etapa.
 5. Testar com `TRILHA_SIMULAR=1`: mover um lead de teste e conferir a execução e a resposta da trilha-api.
 
 Depois do primeiro backup, os fluxos em produção aparecem em `n8n/fluxos/` (nomeados pelo nome do fluxo); `n8n/modelos/` continua sendo o ponto de partida para instalações novas. Os modelos seguem o formato de exportação do n8n, mas **ainda não foram importados numa instância real**: conferir tipo e versão de cada nó ao importar.

@@ -1,19 +1,8 @@
-# Sistema de Automação Google Ads com Claude — Arquitetura v0.6
+# Arquitetura — Google Ads
 
-> Status: arquitetura + MVP em construção · 2026-10-03
-> **Leia primeiro:** [`ARQUITETURA-NUCLEO.md`](ARQUITETURA-NUCLEO.md) — estratégia, onboarding, perfil, brand kit, playbooks, conversão real, estatística e governança são compartilhados e não se repetem aqui.
-> Documento irmão: [`ARQUITETURA-META-ADS.md`](ARQUITETURA-META-ADS.md)
+> **Leia primeiro:** [núcleo](nucleo.md) — estratégia, onboarding, perfil, brand kit, playbooks, conversão real, estatística e governança são compartilhados e não se repetem aqui.
+> Documento irmão: [Meta Ads](meta-ads.md)
 > Referência inicial: masterclass "Claude Code + Google Ads" (Jono), com adaptações e correções próprias.
-
-### Changelog
-- **v0.6** — Conversões offline pela **Data Manager API** (a Google não aceita novos integradores em `UploadClickConversions` desde 15/06/2026). Escopo (ADR-009): o módulo de landing pages (M5) sai deste sistema e vira ferramenta paralela; aqui fica só o contrato de rastreamento. Geração em massa de campanhas vira "subida do que o assessor aprovou" (Fase 2).
-- **v0.5** — Alinhado ao [`MODELO-OPERACIONAL.md`](MODELO-OPERACIONAL.md). Negativas, lances e estrutura sempre como sugestão no dossiê semanal; varredura de termos alimenta o dossiê; pausa automática só pelo freio de emergência (ADR-008).
-- **v0.4** — AI Max para Pesquisa, Demand Gen e YouTube no mapa de hipóteses; GA4 e GTM server-side no rastreamento; `gbraid`/`wbraid` além do `gclid`; payload de conversão offline e conversões otimizadas para leads em código; portais e outras origens no CAC total; roadmap movido para o `ROADMAP.md` único.
-- **v0.3** — Conteúdo comum movido para o núcleo. Novos: landing pages em três níveis, Perfil da Empresa no Google, anúncios de chamada e formulário de lead, integração com brand kit (verificador de copy, ofertas, regras comerciais), destino WhatsApp com rastreamento, negativas vindas do playbook do segmento, auditoria de onboarding.
-- **v0.2** — (sem versão própria; numeração alinhada ao núcleo e ao Meta)
-- **v0.1** — Acesso via API, seis módulos, conversões offline, correções à referência.
-
----
 
 ## 1. Papel do Google no sistema
 
@@ -27,8 +16,8 @@ O Google **captura demanda**: atende quem já está procurando. O fator decisivo
 | Pesquisa de palavras-chave | Planejador de Palavras-chave (API ou exportação) |
 | Cálculos | núcleo |
 | Conversões offline | Data Manager API (`events:ingest`) |
-| Subida do que o assessor aprovou | Google Ads API (Fase 2) |
-| Landing pages | **fora deste sistema** — ferramenta paralela ([ECOSSISTEMA.md](ECOSSISTEMA.md)) |
+| Subida do que o assessor aprovou | Google Ads API (evolução futura) |
+| Landing pages | **fora deste sistema** — ferramenta paralela ([ecossistema](../ecossistema.md)) |
 
 Se surgir um conector MCP confiável para Google Ads, ele substitui só a camada de acesso.
 
@@ -108,7 +97,7 @@ Se surgir um conector MCP confiável para Google Ads, ele substitui só a camada
 
 ### M5 — Landing pages (fora deste sistema)
 
-Páginas são construídas por uma ferramenta paralela ([ECOSSISTEMA.md](ECOSSISTEMA.md)). Este sistema exige delas apenas o **contrato de rastreamento**: campos ocultos com `gclid`, `gbraid`, `wbraid`, `fbclid` e UTMs gravados no lead do Kommo, e a tag do Google disparando. A coerência de mensagem com os anúncios vem da mesma fonte (`marca.yaml`, `ofertas/`).
+Páginas são construídas por uma ferramenta paralela ([ecossistema](../ecossistema.md)). Este sistema exige delas apenas o **contrato de rastreamento**: campos ocultos com `gclid`, `gbraid`, `wbraid`, `fbclid` e UTMs gravados no lead do Kommo, e a tag do Google disparando. A coerência de mensagem com os anúncios vem da mesma fonte (`marca.yaml`, `ofertas/`).
 
 ### M6 — Rastreamento e públicos
 
@@ -128,7 +117,7 @@ Páginas são construídas por uma ferramenta paralela ([ECOSSISTEMA.md](ECOSSIS
 
 Somam-se aos motores do núcleo:
 
-Urgências vão para o Slack na hora; o resto entra no dossiê semanal de otimização (MODELO-OPERACIONAL §3.1).
+Urgências vão para o Slack na hora; o resto entra no dossiê semanal de otimização (modelo-operacional.md §3.1).
 
 | Achado | Gatilho | Vai para |
 |---|---|---|
@@ -164,23 +153,12 @@ Serviços, ofertas, horário e regras comerciais vêm de `ofertas/` e `marca.yam
 
 ```
 trilha/plataformas/google/
-├── conector/          # API, GAQL, autenticação, normalização
-├── auditoria/         # checklist de onboarding, estimativa de desperdício
-├── palavras_chave/    # M1
-├── estrutura/         # M2
-├── anuncios/          # M3 (usa core/copy)
-├── negativas/         # M4 (usa playbooks/<segmento>/negativas.md)
-├── rastreamento/      # M6 (conversoes_offline.py ✅)
-└── local/             # M7
-skills/
-├── campanha/  ├── anuncios/  └── negativas/      # Fase 2: montar e subir o que o assessor aprovou
+├── conversoes_offline.py   ✅ retorno de eventos do Kommo (Data Manager API)
+├── coleta.py               ⬜ métricas diárias (GAQL) e normalização para o esquema comum
+└── termos.py               ⬜ varredura de termos de pesquisa como ponto de atenção no dossiê
 ```
 
-## 8. Roadmap Google
-
-Movido para o [`ROADMAP.md`](ROADMAP.md) único (núcleo + plataformas, com corte de MVP).
-
-## 9. Riscos específicos
+## 8. Riscos específicos
 
 - Developer token com acesso inicial limitado; aprovação superior leva tempo.
 - Demanda baixa (cidades pequenas, nichos) limita volume e testes — a Camada 0 precisa dizer isso ao cliente antes.

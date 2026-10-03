@@ -1,19 +1,8 @@
-# Sistema de Automação Meta Ads com Claude — Arquitetura v0.6
+# Arquitetura — Meta Ads
 
-> Status: arquitetura + MVP em construção · 2026-10-03
-> **Leia primeiro:** [`ARQUITETURA-NUCLEO.md`](ARQUITETURA-NUCLEO.md) — estratégia, onboarding, perfil, brand kit, playbooks, conversão real, estatística e governança são compartilhados e não se repetem aqui.
-> Documento irmão: [`ARQUITETURA-GOOGLE-ADS.md`](ARQUITETURA-GOOGLE-ADS.md)
+> **Leia primeiro:** [núcleo](nucleo.md) — estratégia, onboarding, perfil, brand kit, playbooks, conversão real, estatística e governança são compartilhados e não se repetem aqui.
+> Documento irmão: [Google Ads](google-ads.md)
 > Referência inicial: "Claude + Facebook Ads (FULL COURSE)" — Sam Piliero / The Moonlighters, com adaptações e melhorias próprias.
-
-### Changelog
-- **v0.6** — Escopo (ADR-009): o "volante criativo" vira **pacote de dados do briefing** — o sistema reúne os dados; briefing, roteiro e peças são do assessor e da equipe de criação. API de Conversões na Graph API v26.0. Atendimento no WhatsApp (Kommo/BotConversa) é ferramenta paralela; aqui só o rastreamento.
-- **v0.5** — Alinhado ao [`MODELO-OPERACIONAL.md`](MODELO-OPERACIONAL.md). Regra de "perdedor" passa a ser sugestão no dossiê semanal; pausa automática só pelo freio de emergência (ADR-008). Achados de criativo (fadiga, vencedores, diversidade) entram no dossiê, não em alertas.
-- **v0.4** — Campanhas Advantage+ como estrutura padrão a avaliar; diversidade criativa como alavanca principal de entrega; `ctwa_clid` e API de Conversões para mensagens no destino WhatsApp; GTM server-side; alternativas quando o volume não sustenta otimizar por lead qualificado; regra de vencedor relativa (substitui o limite fixo de 5% do gasto); roadmap movido para o `ROADMAP.md` único.
-- **v0.3** — Conteúdo comum movido para o núcleo. Novos: estratégia de estrutura de conta, escolha de destino (site, formulário instantâneo, WhatsApp), auditoria de pixel/API de Conversões, framework de testes criativos com taxonomia de ângulos e métricas de criativo, proteção da fase de aprendizado, volante criativo condicionado à maturidade.
-- **v0.2** — Implementação híbrida, conectores, normalização, conversão real.
-- **v0.1** — Três camadas, perfil, regras derivadas.
-
----
 
 ## 1. Papel do Meta no sistema
 
@@ -121,12 +110,12 @@ A regra da referência ("> 5% do gasto da campanha") não discrimina nada com 3�
 - **Participação relativa de entrega** = participação no gasto ÷ participação esperada (1 ÷ nº de criativos ativos no conjunto). Acima de 1,5 = o algoritmo está preferindo o criativo.
 - **Vencedor:** participação relativa ≥ 1,5 **e** métrica principal dentro da meta (em baixo volume: CPL na janela de 14–28 dias ≤ máximo, com gasto mínimo de 2× CPL máximo; em alto volume: `P(CPL < máximo) > 0,8` pelo encolhimento bayesiano) → iterar.
 - **Potencial:** só uma das condições → ajustar (gancho, título, formato).
-- **Perdedor:** gasto ≥ 2× CPL máximo sem lead, ou participação relativa < 0,5 por 14 dias com métrica fora da meta → ponto de atenção no dossiê semanal (o assessor decide se pausa). Pausa automática só quando o gasto passa do limite do freio de emergência (3× CPL máximo sem lead, ADR-008).
+- **Perdedor:** gasto ≥ 2× CPL máximo sem lead, ou participação relativa < 0,5 por 14 dias com métrica fora da meta → ponto de atenção no dossiê semanal (o assessor decide se pausa). Pausa automática só quando o gasto passa do limite do freio de emergência (3× CPL máximo sem lead, ADR-006).
 - Análise também por **etiqueta**: quais eixos, avatares e ganchos vencem de forma persistente.
 
 ### 6.5 Pacote de dados do briefing
 
-O briefing é do assessor; o sistema reúne os dados que ele precisaria levantar à mão (fluxo W08, [MODELO-OPERACIONAL.md](MODELO-OPERACIONAL.md) §3.3):
+O briefing é do assessor; o sistema reúne os dados que ele precisaria levantar à mão (fluxo W08, [modelo operacional](../modelo-operacional.md) §3.3):
 
 | Dado | Fonte |
 |---|---|
@@ -143,7 +132,7 @@ Saída: o modelo de briefing do time de criação com esses campos preenchidos. 
 
 Somam-se aos motores do núcleo:
 
-Urgências vão para o Slack na hora; o resto entra no dossiê semanal de otimização (MODELO-OPERACIONAL §3.1).
+Urgências vão para o Slack na hora; o resto entra no dossiê semanal de otimização (modelo-operacional.md §3.1).
 
 | Achado | Gatilho | Vai para |
 |---|---|---|
@@ -158,18 +147,12 @@ Urgências vão para o Slack na hora; o resto entra no dossiê semanal de otimiz
 
 ```
 trilha/plataformas/meta/
-├── conector/        # MCP / Marketing API, normalização para o esquema comum
-├── auditoria/       # checklist de onboarding
-├── estrutura/       # recomendações de consolidação e aprendizado
-├── criativos/       # taxonomia, métricas, testes, pacote de dados do briefing
-└── capi.py          # ✅ retorno de eventos de qualidade (via Kommo) — trilha/plataformas/meta/capi.py
+├── capi.py          ✅ retorno de eventos de qualidade do Kommo (API de Conversões)
+├── coleta.py        ⬜ métricas diárias e normalização para o esquema comum
+└── criativos.py     ⬜ taxonomia, métricas de criativo, dados do pacote de briefing
 ```
 
-## 9. Roadmap Meta
-
-Movido para o [`ROADMAP.md`](ROADMAP.md) único (núcleo + plataformas, com corte de MVP).
-
-## 10. Riscos específicos
+## 9. Riscos específicos
 
 - Acesso ao MCP em liberação gradual.
 - Formulário instantâneo sem qualificação gera volume enganoso.

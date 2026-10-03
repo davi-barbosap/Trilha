@@ -1,6 +1,5 @@
-# Servidor da operação: n8n em modo fila + worker, Postgres, Redis, trilha-api e HTTPS (Caddy).
-# Uso: cp infra/.env.infra.example infra/.env && docker compose -f infra/docker-compose.yml --env-file infra/.env up -d
-# Detalhes e checklist de segurança: docs/integracoes/N8N.md
+# Uso: cp infra/.env.example infra/.env && docker compose -f infra/docker-compose.yml --env-file infra/.env up -d
+# Detalhes e segurança: docs/integracoes/n8n.md
 
 x-n8n: &n8n
   image: n8nio/n8n:${N8N_VERSION:?fixe a versão do n8n em infra/.env}
@@ -25,8 +24,7 @@ x-n8n: &n8n
     EXECUTIONS_DATA_PRUNE: "true"
     EXECUTIONS_DATA_MAX_AGE: "168"
     N8N_RUNNERS_ENABLED: "true"
-    # n8n 2.x bloqueia $env por padrão. Liberado só para configuração de baixo risco (URL interna e
-    # webhook do Slack); o token da trilha-api fica numa credencial "Header Auth" do n8n. Ver N8N.md §5.
+    # $env liberado só para configuração de baixo risco; o token da trilha-api fica numa credencial do n8n.
     N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     TRILHA_API_URL: http://trilha-api:8080
     SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
@@ -61,7 +59,9 @@ services:
     depends_on: [n8n]
 
   trilha-api:
-    build: ..
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
     restart: unless-stopped
     environment:
       TRILHA_API_TOKEN: ${TRILHA_API_TOKEN}
@@ -69,7 +69,7 @@ services:
       META_ACCESS_TOKEN: ${META_ACCESS_TOKEN}
       META_GRAPH_VERSION: ${META_GRAPH_VERSION}
       META_TEST_EVENT_CODE: ${META_TEST_EVENT_CODE}
-    env_file: [./kommo-tokens.env]              # KOMMO_TOKEN_<CLIENTE> e KOMMO_WEBHOOK_TOKEN_<CLIENTE> (um par por cliente)
+    env_file: [./kommo.env]              # KOMMO_TOKEN_<CLIENTE> e KOMMO_WEBHOOK_TOKEN_<CLIENTE> (um par por cliente)
     volumes:
       - ${TRILHA_CLIENTES_DIR:?caminho do repositório privado trilha-clientes}:/clientes:ro
     # sem porta pública: só o n8n fala com a API, pela rede interna

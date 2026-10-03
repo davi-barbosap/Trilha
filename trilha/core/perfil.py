@@ -1,4 +1,4 @@
-"""Esquema validado do perfil.yaml do cliente (núcleo §4, §7.2, §10; MODELO-OPERACIONAL.md).
+"""Esquema validado do perfil.yaml do cliente (núcleo §4, §7.2, §10; modelo-operacional.md).
 
 O perfil é o contrato entre o onboarding (wizard do briefing-trilha ou preenchimento
 manual) e o núcleo: nenhum módulo liga com um perfil que não passe por aqui.
@@ -30,12 +30,12 @@ class _Base(BaseModel):
 # Mesmo formato do nome da pasta do cliente em trilha-clientes (e do cliente_id da API).
 ClienteId = Annotated[str, Field(pattern=r"^[a-z0-9_][a-z0-9_-]{0,63}$")]
 
-# Blocos que existiram em versões anteriores e hoje são ignorados (com aviso no `validar`).
-BLOCOS_LEGADOS = {"autonomia": "substituído pelo bloco freio (ADR-008); pode ser apagado"}
+# Blocos de versões anteriores: ignorados, com aviso no `validar`.
+BLOCOS_LEGADOS = {"autonomia": "substituído pelo bloco freio (ADR-006); pode ser apagado"}
 
 
 class Cliente(_Base):
-    id: ClienteId  # igual ao nome da pasta do cliente
+    id: ClienteId
     nome: str
     segmento: str  # aponta para playbooks/<segmento>/
 
@@ -147,7 +147,7 @@ class Conversao(_Base):
 
 
 class Freio(_Base):
-    """Freio de emergência (ADR-008): a única ação automática do sistema.
+    """Freio de emergência (ADR-006): a única ação automática do sistema.
 
     modo "pausar" (opção A, padrão): pausa e avisa na hora; desfazer é um clique.
     modo "avisar" (opção B): só avisa; a pausa fica com o responsável.
@@ -165,10 +165,10 @@ class Operacao(_Base):
     """
 
     responsavel: str
-    dia_otimizacao: DiaUtil  # dossiê de otimização na véspera
-    dia_relatorio: DiaUtil  # números do relatório semanal ao cliente na véspera
+    dia_otimizacao: DiaUtil
+    dia_relatorio: DiaUtil
     semana_reuniao: Annotated[int, Field(ge=1, le=4)]  # semana do mês da reunião mensal
-    dia_reuniao: DiaUtil = "sexta"  # pacote da reunião dois dias úteis antes
+    dia_reuniao: DiaUtil = "sexta"
     faixa: Literal["essencial", "performance", "escala"] = "essencial"
 
 
