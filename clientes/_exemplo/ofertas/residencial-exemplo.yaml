@@ -1,0 +1,32 @@
+# Exemplo de oferta (núcleo §5.2). Dados fictícios.
+oferta:
+  nome: Residencial Exemplo
+  tipo: empreendimento
+  estagio: lançamento
+  localizacao: { bairro: Vila Madalena, cidade_uf: São Paulo/SP, regiao: Zona Oeste }
+diferenciais:
+  - "Apartamentos de 2 quartos com 58 m² e varanda gourmet"
+  - "Entrega prevista para dezembro de 2028"
+  - "Rooftop com piscina e coworking"
+raridade: "Único lançamento com varanda gourmet abaixo de R$ 600 mil a 10 minutos a pé do metrô"
+ancoras:
+  - "Estação Vila Madalena — 600 m"
+  - "Hospital Sírio-Libanês — 12 min de carro"
+  - "Shopping Eldorado — 8 min de carro"
+condicoes_comerciais:
+  faixa_preco: "R$ 540 mil – R$ 590 mil"
+  ticket_medio: 560000
+  pagamento: "entrada parcelada em 36x + financiamento"
+  condicao_excepcional: ""
+  validade: ""
+  posicionamento_preco: "média do bairro, abaixo para a metragem com varanda"
+objecoes:
+  - { eixo: preco,       objecao: "Não cabe no meu bolso",        resposta_do_time: "Vamos simular com a sua renda: a entrada é parcelada em 36 vezes." }
+  - { eixo: produto,     objecao: "Planta pequena",                resposta_do_time: "São 58 m² com varanda integrável — te mando o vídeo do decorado." }
+  - { eixo: localizacao, objecao: "Rua movimentada",              resposta_do_time: "A torre fica no meio do terreno, a 40 m da rua." }
+perfil_lead:
+  origem_principal: Meta (clique para WhatsApp)
+  perfil: casais 28–40 anos, primeiro imóvel próprio
+  jornada_media_dias: 75
+  motivo_perda: renda insuficiente para o financiamento
+assets: { imagens: [], videos: [], materiais: [] }

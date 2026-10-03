@@ -1,11 +1,13 @@
-# Sistema de Automação Meta Ads com Claude — Arquitetura v0.3
+# Sistema de Automação Meta Ads com Claude — Arquitetura v0.5
 
-> Status: rascunho de arquitetura · 2026-10-02
+> Status: arquitetura + MVP em construção · 2026-10-03
 > **Leia primeiro:** [`ARQUITETURA-NUCLEO.md`](ARQUITETURA-NUCLEO.md) — estratégia, onboarding, perfil, brand kit, playbooks, conversão real, estatística e governança são compartilhados e não se repetem aqui.
 > Documento irmão: [`ARQUITETURA-GOOGLE-ADS.md`](ARQUITETURA-GOOGLE-ADS.md)
 > Referência inicial: "Claude + Facebook Ads (FULL COURSE)" — Sam Piliero / The Moonlighters, com adaptações e melhorias próprias.
 
 ### Changelog
+- **v0.5** — Alinhado ao [`MODELO-OPERACIONAL.md`](MODELO-OPERACIONAL.md). Regra de "perdedor" passa a ser sugestão no dossiê semanal; pausa automática só pelo freio de emergência (ADR-008). Achados de criativo (fadiga, vencedores, diversidade) entram no dossiê, não em alertas.
+- **v0.4** — Campanhas Advantage+ como estrutura padrão a avaliar; diversidade criativa como alavanca principal de entrega; `ctwa_clid` e API de Conversões para mensagens no destino WhatsApp; GTM server-side; alternativas quando o volume não sustenta otimizar por lead qualificado; regra de vencedor relativa (substitui o limite fixo de 5% do gasto); roadmap movido para o `ROADMAP.md` único.
 - **v0.3** — Conteúdo comum movido para o núcleo. Novos: estratégia de estrutura de conta, escolha de destino (site, formulário instantâneo, WhatsApp), auditoria de pixel/API de Conversões, framework de testes criativos com taxonomia de ângulos e métricas de criativo, proteção da fase de aprendizado, volante criativo condicionado à maturidade.
 - **v0.2** — Implementação híbrida, conectores, normalização, conversão real.
 - **v0.1** — Três camadas, perfil, regras derivadas.
@@ -53,6 +55,8 @@ Complementa a auditoria geral do núcleo (§3.3):
 
 Princípio: **consolidar** para dar volume de sinal ao algoritmo e sair rápido da fase de aprendizado.
 
+**Campanhas Advantage+** (vendas, leads, app) são hoje o formato que o Meta empurra como padrão: público, posicionamento e parte do orçamento ficam a cargo do algoritmo. O sistema as trata como **primeira opção a avaliar** em toda conta com evento de conversão confiável, comparando com a estrutura manual consolidada abaixo pelo protocolo de testes do núcleo (§9.4). Pré-requisitos: retorno de conversão real funcionando (sem ele, Advantage+ otimiza para lead barato) e exclusão de clientes atuais configurada quando o objetivo for aquisição. Os nomes e o escopo desses produtos mudam com frequência — validar na conta antes de recomendar.
+
 | Situação do cliente | Estrutura recomendada |
 |---|---|
 | Verba na mínima viável | 1 campanha de conversão, orçamento no nível da campanha, público amplo, 3–6 criativos por eixo |
@@ -67,13 +71,17 @@ Fase de aprendizado: o sistema estima se cada conjunto tem volume para sair do a
 
 | Destino | Quando usar | Cuidados |
 |---|---|---|
-| **WhatsApp (clique para conversar)** | atendimento consultivo, ticket médio/alto, público que prefere conversar | rastrear conversa → status no Kommo; o SLA de resposta decide o resultado |
+| **WhatsApp (clique para conversar)** | atendimento consultivo, ticket médio/alto, público que prefere conversar | gravar o `ctwa_clid` da conversa no lead do Kommo e devolver eventos de qualidade pela API de Conversões para mensagens (`action_source: business_messaging`); o SLA de resposta decide o resultado |
 | **Formulário instantâneo** | volume alto, baixo atrito | leads de pior qualidade; usar perguntas qualificadoras e retornar qualificação ao Meta |
-| **Site / landing page** | oferta que precisa de explicação ou prova; e-commerce | pixel + API de Conversões; coerência com o anúncio |
+| **Site / landing page** | oferta que precisa de explicação ou prova; e-commerce | pixel + API de Conversões via GTM server-side, deduplicados por `event_id`; coerência com o anúncio |
 
 **Escada de evento de otimização** (sobe conforme volume e maturidade):
 `lead` → `lead_qualificado` (status "interesse confirmado" no Kommo) → `agendamento` → `venda`.
 O sistema recomenda subir de degrau quando o evento superior atinge volume semanal suficiente.
+
+**Viabilidade:** a Camada 0 (núcleo §3.1) calcula a verba mensal de cada degrau. Exemplo imobiliário: ~R$ 6 mil/mês para otimizar por `lead`, ~R$ 24 mil/mês para `lead_qualificado` em um único conjunto. Para a maioria das PMEs o degrau `lead_qualificado` é inviável; nesses casos valem as alternativas do núcleo §7.2 (atrito qualificador na origem, todos os eventos de qualidade enviados mesmo assim, valor ponderado por degrau).
+
+**Implementação do retorno:** `trilha/plataformas/meta/capi.py` monta o evento (dados em hash, `event_id` = `kommo-<lead>-<evento>` para deduplicação, `lead_id` do formulário instantâneo, `fbc` a partir do `fbclid`, `ctwa_clid` para WhatsApp) e envia em modo simulação por padrão.
 
 ## 6. Módulo criativo
 
@@ -102,14 +110,17 @@ Diagnóstico combinado: gancho forte + CTR fraco → promessa ou chamada fraca; 
 - **Conceito novo** (novo eixo, avatar ou formato): busca grandes saltos; testado na campanha de teste.
 - **Iteração** (mesmo conceito, novo gancho/título/abertura): explora um vencedor.
 - Proporção inicial sugerida: ~30% da produção em conceitos novos, ~70% em iterações — ajustada pelo registro de decisões.
+- **Diversidade criativa é a nova segmentação.** Com público amplo e Advantage+, o algoritmo usa as diferenças entre criativos para encontrar públicos diferentes. Variações quase iguais (mesma imagem, título trocado) competem entre si; conceitos realmente distintos (eixo, avatar, formato, pessoa em cena) ampliam alcance. A taxonomia de ângulos mede essa diversidade: o sistema alerta quando os criativos ativos se concentram em um único eixo ou formato.
 - Todo teste segue o protocolo do núcleo (§9.4): hipótese, amostra mínima, duração máxima, regra de decisão.
 - Cobertura: o sistema aponta eixos do playbook sem criativo ativo ou sem teste recente.
 
 ### 6.4 Vencedores e potenciais
 
-Regras de referência, avaliadas com o método do núcleo (encolhimento bayesiano, janelas por volume, correção de atraso):
-- **Vencedor:** > 5% do gasto da campanha **e** métrica principal dentro da meta → iterar.
+A regra da referência ("> 5% do gasto da campanha") não discrimina nada com 3–6 criativos — quase todos passam de 5%. Substituída por critérios **relativos**, avaliados no modo estatístico da conta (núcleo §9.0):
+- **Participação relativa de entrega** = participação no gasto ÷ participação esperada (1 ÷ nº de criativos ativos no conjunto). Acima de 1,5 = o algoritmo está preferindo o criativo.
+- **Vencedor:** participação relativa ≥ 1,5 **e** métrica principal dentro da meta (em baixo volume: CPL na janela de 14–28 dias ≤ máximo, com gasto mínimo de 2× CPL máximo; em alto volume: `P(CPL < máximo) > 0,8` pelo encolhimento bayesiano) → iterar.
 - **Potencial:** só uma das condições → ajustar (gancho, título, formato).
+- **Perdedor:** gasto ≥ 2× CPL máximo sem lead, ou participação relativa < 0,5 por 14 dias com métrica fora da meta → sugestão de pausa no dossiê semanal. Pausa automática só quando o gasto passa do limite do freio de emergência (3× CPL máximo sem lead, ADR-008).
 - Análise também por **etiqueta**: quais eixos, avatares e ganchos vencem de forma persistente.
 
 ### 6.5 Briefings e volante criativo
@@ -127,35 +138,31 @@ Condicionado à maturidade criativa (núcleo §3.2): com capacidade 0–1, o vol
 
 Somam-se aos motores do núcleo:
 
-| Alerta | Gatilho |
-|---|---|
-| Conjunto preso em aprendizado / aprendizado limitado | sem volume para sair |
-| Fadiga de criativo | frequência subindo + queda de CTR/retenção no mesmo criativo |
-| CPM anômalo | estatística do núcleo (mediana/MAD, dia da semana) |
-| Reprovação ou restrição | sempre |
-| Qualidade de correspondência da API de Conversões caiu | sempre |
-| Divergência pixel × CRM | leads no Meta muito acima/abaixo dos leads no Kommo |
+Urgências vão para o Slack na hora; o resto entra no dossiê semanal de otimização (MODELO-OPERACIONAL §3.1).
+
+| Achado | Gatilho | Vai para |
+|---|---|---|
+| Conjunto preso em aprendizado / aprendizado limitado | sem volume para sair | dossiê |
+| Fadiga de criativo | frequência subindo + queda de CTR/retenção no mesmo criativo | dossiê |
+| CPM anômalo | estatística do núcleo (mediana/MAD, dia da semana) | dossiê |
+| Reprovação ou restrição | sempre | urgência |
+| Qualidade de correspondência da API de Conversões caiu | sempre | urgência |
+| Divergência pixel × CRM | leads no Meta muito acima/abaixo dos leads no Kommo | dossiê (urgência se > 50%) |
 
 ## 8. Estrutura no repositório
 
 ```
-plataformas/meta/
+trilha/plataformas/meta/
 ├── conector/        # MCP / Marketing API, normalização para o esquema comum
 ├── auditoria/       # checklist de onboarding
 ├── estrutura/       # recomendações de consolidação e aprendizado
 ├── criativos/       # taxonomia, métricas, testes, briefings, volante
-└── capi/            # retorno de eventos de qualidade (via Kommo)
+└── capi.py          # ✅ retorno de eventos de qualidade (via Kommo) — trilha/plataformas/meta/capi.py
 ```
 
 ## 9. Roadmap Meta
 
-1. Acesso ao MCP + auditoria de onboarding.
-2. Relatório diário e alertas operacionais (usando o núcleo).
-3. Taxonomia de criativos + renomeação dos anúncios existentes.
-4. Retorno de eventos de qualidade (Kommo → API de Conversões) e escada de otimização.
-5. Métricas de criativo e framework de testes.
-6. Detector de vencedores por anúncio e por etiqueta.
-7. Briefings e volante criativo.
+Movido para o [`ROADMAP.md`](ROADMAP.md) único (núcleo + plataformas, com corte de MVP).
 
 ## 10. Riscos específicos
 
@@ -164,3 +171,5 @@ plataformas/meta/
 - Excesso de criativos fragmenta a verba e mantém conjuntos em aprendizado.
 - Categoria especial de anúncio (habitação, crédito, emprego) restringe segmentação — verificar regras vigentes por país.
 - Mudanças frequentes de estrutura reiniciam o aprendizado; daí as janelas de recomendação do núcleo.
+- Advantage+ sem conversão real otimiza para o lead mais barato, não para o melhor.
+- Os nomes, limites e requisitos dos produtos do Meta (Advantage+, API de Conversões para mensagens, categorias especiais) mudam com frequência — toda recomendação estrutural é validada na conta do cliente.

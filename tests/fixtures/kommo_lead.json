@@ -1,0 +1,15 @@
+{
+  "id": 987654,
+  "name": "Lead Residencial Exemplo",
+  "price": 560000,
+  "status_id": 3333,
+  "pipeline_id": 1111,
+  "created_at": 1789900000,
+  "custom_fields_values": [
+    {"field_id": 501, "field_name": "gclid", "field_code": null, "values": [{"value": "Cj0KCQjw-exemplo"}]},
+    {"field_id": 502, "field_name": "fbclid", "field_code": null, "values": [{"value": "IwAR-exemplo"}]},
+    {"field_id": 503, "field_name": "utm_content", "field_code": null, "values": [{"value": "PRECO_parcela-cabe_jovem-casal_video-corretor_pergunta_resid-x_v2"}]},
+    {"field_id": 504, "field_name": "utm_source", "field_code": null, "values": [{"value": "google"}]}
+  ],
+  "_embedded": {"contacts": [{"id": 111, "is_main": true}]}
+}

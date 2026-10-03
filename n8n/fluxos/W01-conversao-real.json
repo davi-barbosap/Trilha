@@ -1,0 +1,241 @@
+{
+  "name": "W01 · Conversão real (Kommo → trilha-api → Meta/Google)",
+  "nodes": [
+    {
+      "id": "w01-webhook",
+      "name": "Webhook Kommo",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "trilha-w01-kommo",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kommo/:cliente",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "w01-token",
+      "name": "Token confere?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-token",
+              "leftValue": "={{ $json.query.token }}",
+              "rightValue": "={{ $env.KOMMO_WEBHOOK_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "w01-ok",
+      "name": "Responder 200 ao Kommo",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        200
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "ok",
+        "options": {}
+      }
+    },
+    {
+      "id": "w01-negado",
+      "name": "Responder 403",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        420
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "forbidden",
+        "options": {
+          "responseCode": 403
+        }
+      }
+    },
+    {
+      "id": "w01-api",
+      "name": "trilha-api /conversao",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        200
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TRILHA_API_URL }}/conversao",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.TRILHA_API_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ cliente_id: $('Webhook Kommo').item.json.params.cliente, corpo: $('Webhook Kommo').item.json.body, simular: false }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "w01-pulados",
+      "name": "Algo foi pulado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        960,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-pulados",
+              "leftValue": "={{ $json.resumo.pulados.filter(p => !p.includes('uso interno')).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "w01-slack",
+      "name": "Avisar operação (Slack)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        120
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `:warning: Conversão real — ${$json.cliente}: evento não enviado\\n• ` + $json.resumo.pulados.filter(p => !p.includes('uso interno')).join('\\n• ') }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Kommo": {
+      "main": [
+        [
+          {
+            "node": "Token confere?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token confere?": {
+      "main": [
+        [
+          {
+            "node": "Responder 200 ao Kommo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder 403",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder 200 ao Kommo": {
+      "main": [
+        [
+          {
+            "node": "trilha-api /conversao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "trilha-api /conversao": {
+      "main": [
+        [
+          {
+            "node": "Algo foi pulado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Algo foi pulado?": {
+      "main": [
+        [
+          {
+            "node": "Avisar operação (Slack)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": false,
+    "errorWorkflow": "DEFINIR_ID_DO_W10_APOS_IMPORTAR"
+  },
+  "pinData": {}
+}

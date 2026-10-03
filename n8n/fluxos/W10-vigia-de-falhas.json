@@ -1,0 +1,56 @@
+{
+  "name": "W10 · Vigia de falhas (fluxo de erro global)",
+  "nodes": [
+    {
+      "id": "w10-erro",
+      "name": "Quando um fluxo falhar",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "w10-slack",
+      "name": "Avisar operação (Slack)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 10000,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: `:rotating_light: Falha no fluxo *${$json.workflow.name}*\\nEtapa: ${$json.execution.lastNodeExecuted || '—'}\\nErro: ${($json.execution.error && $json.execution.error.message) || 'sem mensagem'}\\nExecução: ${$json.execution.url || '—'}` }) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Quando um fluxo falhar": {
+      "main": [
+        [
+          {
+            "node": "Avisar operação (Slack)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all"
+  },
+  "pinData": {}
+}

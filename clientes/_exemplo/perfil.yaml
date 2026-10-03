@@ -1,0 +1,82 @@
+# Perfil de exemplo — imobiliária fictícia. Valide com: python -m trilha validar clientes/_exemplo/perfil.yaml
+# Clientes reais NÃO ficam neste repositório (ADR-004).
+versao: 1
+vigente_desde: 2026-10-01
+
+cliente:
+  id: exemplo
+  nome: Imobiliária Exemplo
+  segmento: imobiliario
+
+metrica_principal: lead_qualificado
+
+economia:
+  modelo_receita: comissao        # a receita é a comissão retida, não o valor do imóvel
+  valor_medio_bem: 450000
+  comissao_pct: 0.05
+  participacao_comissao: 0.5      # parte da comissão que fica com a imobiliária
+  margem_contribuicao: 0.5
+  pct_investivel: 0.5
+  taxa_fechamento: 0.01
+  taxa_qualificacao: 0.25
+  taxa_agendamento: 0.05
+  estimados: [taxa_fechamento, taxa_agendamento]   # vieram do playbook; trocar por dado próprio
+
+verba:
+  mensal_planejada: 8000
+  teto_mensal: 10000
+  moeda: BRL
+
+plataformas:
+  meta:
+    ad_account_id: "act_000000000000000"
+    pixel_id: "000000000000000"
+    page_id: "000000000000000"
+  google:
+    customer_id: "123-456-7890"
+    login_customer_id: "111-222-3333"
+
+crm:
+  tipo: kommo
+  subdominio: imobiliaria-exemplo
+  mapa_eventos:
+    - { pipeline_id: 1111, status_id: 2222, evento: lead }
+    - { pipeline_id: 1111, status_id: 3333, evento: lead_qualificado }
+    - { pipeline_id: 1111, status_id: 4444, evento: agendamento }
+    - { pipeline_id: 1111, status_id: 5555, evento: reativado }
+  campos:
+    gclid: gclid
+    gbraid: gbraid
+    wbraid: wbraid
+    fbclid: fbclid
+    ctwa_clid: ctwa_clid
+    meta_lead_id: meta_lead_id
+    utm_source: utm_source
+    utm_campaign: utm_campaign
+    utm_content: utm_content
+    codigo_criativo: codigo_criativo
+
+conversao:
+  eventos_semana_aprendizado: 50
+  destinos:
+    lead:             { meta_event_name: Lead,             google_conversion_action_id: "900000001", valor: ponderado }
+    lead_qualificado: { meta_event_name: LeadQualificado,  google_conversion_action_id: "900000002", valor: ponderado }
+    agendamento:      { meta_event_name: Schedule,         google_conversion_action_id: "900000003", valor: ponderado }
+    venda:            { meta_event_name: Purchase,         google_conversion_action_id: "900000004", valor: receita }
+    # desqualificado e reativado: uso interno, sem destino
+
+# Freio de emergência (ADR-008) — a única ação automática. Todo o resto vira sugestão no dossiê semanal.
+freio:
+  modo: pausar                    # pausar (opção A, padrão) | avisar (opção B: só avisa)
+  gasto_sem_lead_multiplo: 3      # pausa campanha que gastou 3× o CPL máximo desde o último lead
+  horas_rastreamento_quebrado: 6  # pausa campanha gastando há 6h sem nenhum evento de conversão
+
+# Agenda dos rituais humanos (MODELO-OPERACIONAL.md) — o sistema prepara cada um na véspera.
+operacao:
+  responsavel: Assessor responsável
+  faixa: performance              # essencial | performance | escala
+  dia_otimizacao: segunda
+  dia_contato: terca
+  semana_reuniao: 1               # 1ª semana do mês
+  dia_reuniao: sexta
+  canal_contato: whatsapp
