@@ -33,7 +33,8 @@ class TestApi(unittest.TestCase):
             self.buscas.append(lead_id)
             return extrair_dados_lead(lead, [contato], perfil.crm.campos)
 
-        self.app = TrilhaApi(token="segredo", clientes_dir=RAIZ / "clientes", obter_dados=obter, envio_real_permitido=False)
+        self.app = TrilhaApi(token="segredo", clientes_dir=RAIZ / "clientes", obter_dados=obter,
+                             envio_real_permitido=False, segredos_webhook={"_exemplo": "wh-exemplo"})
 
     def test_saude_sem_token_e_autenticacao(self):
         self.assertEqual(chamar(self.app, "GET", "/saude", token=None)[0], 200)
@@ -60,7 +61,8 @@ class TestApi(unittest.TestCase):
 
     def test_conversao_com_corpo_interpretado_pelo_n8n(self):
         corpo = {"leads": {"status": [{"id": "987654", "status_id": "3333", "pipeline_id": "1111", "old_status_id": "2222"}]}}
-        status, r = chamar(self.app, "POST", "/conversao", {"cliente_id": "_exemplo", "corpo": corpo, "simular": False})
+        status, r = chamar(self.app, "POST", "/conversao",
+                           {"cliente_id": "_exemplo", "webhook_token": "wh-exemplo", "corpo": corpo, "simular": False})
         self.assertEqual(status, 200)
         self.assertTrue(r["simulado"])  # ambiente não permite envio real: a requisição não consegue forçar
         self.assertEqual(r["resumo"]["simulados"], 2)
@@ -71,8 +73,23 @@ class TestApi(unittest.TestCase):
 
     def test_conversao_com_corpo_original(self):
         corpo = (FIX / "kommo_webhook.txt").read_text()
-        status, r = chamar(self.app, "POST", "/conversao", {"cliente_id": "_exemplo", "corpo": corpo})
+        status, r = chamar(self.app, "POST", "/conversao", {"cliente_id": "_exemplo", "webhook_token": "wh-exemplo", "corpo": corpo})
         self.assertEqual((status, len(r["envios"])), (200, 2))
+
+    def test_isolamento_entre_clientes(self):
+        corpo = (FIX / "kommo_webhook.txt").read_text()  # vem da conta imobiliaria-exemplo
+        base = {"cliente_id": "_exemplo", "corpo": corpo}
+        # segredo de outro cliente (ou o antigo segredo global) não serve
+        self.assertEqual(chamar(self.app, "POST", "/conversao", {**base, "webhook_token": "wh-outro"})[0], 403)
+        self.assertEqual(chamar(self.app, "POST", "/conversao", base)[0], 403)
+        # conta Kommo do corpo diferente da do perfil
+        alheio = corpo.replace("imobiliaria-exemplo", "conta-de-outro-cliente")
+        status, r = chamar(self.app, "POST", "/conversao", {**base, "corpo": alheio, "webhook_token": "wh-exemplo"})
+        self.assertEqual(status, 403)
+        self.assertIn("conta Kommo", r["erro"])
+        # perfil inline não é aceito em /conversao (só cliente_id do repositório)
+        self.assertEqual(chamar(self.app, "POST", "/conversao", {"perfil": {}, "corpo": corpo, "webhook_token": "x"})[0], 400)
+        self.assertEqual(self.buscas, [])  # nenhuma leitura no Kommo em tentativa recusada
 
     def test_freio(self):
         status, r = chamar(self.app, "POST", "/freio/avaliar", {"cliente_id": "_exemplo", "campanhas": [
@@ -81,6 +98,9 @@ class TestApi(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(r["acoes"][0]["acao"], "pausar")
         self.assertEqual(chamar(self.app, "POST", "/freio/avaliar", {"cliente_id": "_exemplo", "campanhas": [{"x": 1}]})[0], 400)
+        status, r = chamar(self.app, "POST", "/freio/avaliar", {"cliente_id": "_exemplo", "campanhas": [
+            {"plataforma": "meta", "campanha_id": "c1", "ativa": "false", "gasto_desde_ultimo_lead": 200}]})
+        self.assertEqual(status, 400)  # "false" em texto não vira verdadeiro
 
     def test_clientes_ignora_exemplo_e_lista_invalidos(self):
         import shutil, tempfile
@@ -88,14 +108,21 @@ class TestApi(unittest.TestCase):
         try:
             shutil.copytree(RAIZ / "clientes" / "_exemplo", tmp / "_exemplo")
             shutil.copytree(RAIZ / "clientes" / "_exemplo", tmp / "imob-a")
+            perfil_a = tmp / "imob-a" / "perfil.yaml"
+            perfil_a.write_text(perfil_a.read_text().replace("id: _exemplo", "id: imob-a"))
+            shutil.copytree(RAIZ / "clientes" / "_exemplo", tmp / "copiado-sem-ajustar")  # cliente.id errado
             (tmp / "quebrado").mkdir()
             (tmp / "quebrado" / "perfil.yaml").write_text("versao: 1\n")
+            (tmp / "yaml-invalido").mkdir()
+            (tmp / "yaml-invalido" / "perfil.yaml").write_text("versao: [1\n  sem: fechar")
             app = TrilhaApi(token="segredo", clientes_dir=tmp)
             status, r = chamar(app, "GET", "/clientes")
             self.assertEqual(status, 200)
             self.assertEqual([c["cliente_id"] for c in r["clientes"]], ["imob-a"])
             self.assertEqual(r["clientes"][0]["operacao"]["dia_otimizacao"], "segunda")
-            self.assertEqual([i["cliente_id"] for i in r["invalidos"]], ["quebrado"])
+            self.assertEqual([i["cliente_id"] for i in r["invalidos"]], ["copiado-sem-ajustar", "quebrado", "yaml-invalido"])
+            self.assertEqual(chamar(app, "POST", "/validar", {"cliente_id": "copiado-sem-ajustar"})[0], 422)
+            self.assertEqual(chamar(app, "POST", "/validar", {"cliente_id": "yaml-invalido"})[0], 422)
         finally:
             shutil.rmtree(tmp)
 

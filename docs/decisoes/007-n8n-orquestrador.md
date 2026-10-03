@@ -19,3 +19,4 @@ O ADR-002 previa tudo em código (Cloud Run), assumindo uma equipe com desenvolv
 - Infraestrutura em `infra/` (docker-compose com n8n + worker, Postgres, Redis, trilha-api, Caddy); fluxos versionados em `n8n/fluxos/` por exportação diária.
 - Licença do n8n (Sustainable Use License): uso interno da agência para atender clientes é o caso comum; dar acesso ao n8n para clientes ou revendê-lo exige revisão da licença.
 - Os dez requisitos de operação profissional estão em [N8N.md](../integracoes/N8N.md) §4.
+- n8n 2.x bloqueia por padrão o acesso a variáveis de ambiente nos nós (`N8N_BLOCK_ENV_ACCESS_IN_NODE=true`). Os segredos dos fluxos devem ir em **credenciais do n8n**; o `infra/docker-compose.yml` libera `$env` só para configuração não sensível — ver N8N.md §5.

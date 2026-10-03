@@ -1,14 +1,26 @@
-# Outras integrações recomendadas
+# Outras ferramentas
+
+## Usadas por este sistema
 
 | Ferramenta | Papel no Trilha | Fase |
 |---|---|---|
-| **n8n** (no próprio servidor) | orquestrador de todos os fluxos — ver [N8N.md](N8N.md) e ADR-007 | MVP semana 1 |
-| **GA4** | comportamento no site, funil da landing, públicos; não é fonte da verdade de conversão (o CRM é) | MVP (auditoria) |
-| **GTM server-side** | pixel + API de Conversões do Meta e tag do Google em domínio próprio; menos perda por bloqueadores | Fase 2 |
-| **BigQuery + Looker Studio** | histórico de mídia e painel MTD (ADR-001, ADR-003); transferência nativa do Google Ads | MVP semana 4 / Fase 2 |
-| **Slack** (ou grupo interno de WhatsApp) | urgências, freio, falhas e leitura diária para a equipe — nunca para o cliente | MVP semana 1 |
-| **Canva** | brand kit (cores, fontes, logo do `marca.yaml`) e modelos preenchidos automaticamente com o texto aprovado pelo verificador de copy; substitui a "ferramenta externa de geração" do Meta §6.5 | Fase 3 |
-| **Biblioteca de Anúncios do Meta** e **Central de Transparência do Google** | pesquisa de concorrentes: ângulos, ofertas e formatos em uso no mercado local; alimenta a taxonomia de ângulos | Fase 2 |
-| **Microsoft Clarity** | mapas de calor e gravações das landing pages; diagnóstico de página que não converte (gratuito) | Fase 2 |
-| **Google Drive** | repositório de assets do cliente referenciados em `ofertas/*.yaml` | Fase 2 |
-| **Rastreamento de chamadas** | números por campanha para anúncios e extensões de ligação (Google M3) em serviços urgentes | Fase 4 |
+| **n8n 2.x** (autohospedado) | orquestrador dos fluxos — [N8N.md](N8N.md), ADR-007 | MVP semana 1 |
+| **Kommo** | CRM único suportado: etapas, campos de rastreamento, leads — [KOMMO.md](KOMMO.md) | MVP |
+| **Meta — API de Conversões (Graph API v26.0)** | retorno de eventos de qualidade de lead | MVP semana 2 |
+| **Google — Data Manager API** | retorno de conversões offline (substituiu o envio pela Google Ads API para novos integradores em 15/06/2026) | MVP semana 3 |
+| **Google Ads API** | coleta de métricas e execução de mudanças aprovadas | MVP semana 3 |
+| **ClickUp** | mesa de trabalho do assessor — [CLICKUP.md](CLICKUP.md) | MVP semana 5 |
+| **Slack** | urgências, freio, falhas e leitura diária para a equipe — nunca para o cliente | MVP semana 1 |
+| **BigQuery + Looker Studio** | histórico de mídia e painel MTD (ADR-001, ADR-003) | MVP semana 3 / Fase 2 |
+| **Biblioteca de Anúncios do Meta** e **Central de Transparência do Google** | dados de concorrentes para o pacote de briefing | Fase 2 |
+
+## Paralelas (fora deste sistema — [ECOSSISTEMA.md](../../ECOSSISTEMA.md))
+
+| Ferramenta | O que o Trilha precisa dela |
+|---|---|
+| **BotConversa** | repassar `ctwa_clid` e UTMs ao lead no Kommo; mover o lead nas etapas padronizadas |
+| **GA4 / GTM** | tag do Google e pixel funcionando; eventos de conversão do site; `event_id` compartilhado com o servidor |
+| **Landing pages** | campos ocultos com `gclid`/`gbraid`/`wbraid`/`fbclid`/UTMs gravados no Kommo |
+| **Disparos em massa e fluxos de CRM** | não alterar as etapas do funil sem atualizar o `crm.mapa_eventos` |
+| **Captura de tarefas no ClickUp (n8n)** | tarefas com o cliente identificado, para o painel da carteira |
+| **Canva / Google Drive** | uso da equipe de criação; o Trilha só referencia os links das peças |

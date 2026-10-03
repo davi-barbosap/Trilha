@@ -36,6 +36,7 @@ calendario:
   - { periodo: "nov", nota: "Black Friday imobiliária — condições com prazo" }
   - { periodo: "dez (2ª quinzena)", nota: "queda de demanda; reduzir verba de teste" }
 
+# Referência para a ferramenta paralela de fluxos de CRM (ECOSSISTEMA.md) — não usado por este sistema.
 fluxos_atendimento:
   - pre_atendimento
   - follow_up_curto

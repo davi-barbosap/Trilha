@@ -1,4 +1,4 @@
-# Sistema de Automação Google Ads com Claude — Arquitetura v0.5
+# Sistema de Automação Google Ads com Claude — Arquitetura v0.6
 
 > Status: arquitetura + MVP em construção · 2026-10-03
 > **Leia primeiro:** [`ARQUITETURA-NUCLEO.md`](ARQUITETURA-NUCLEO.md) — estratégia, onboarding, perfil, brand kit, playbooks, conversão real, estatística e governança são compartilhados e não se repetem aqui.
@@ -6,6 +6,7 @@
 > Referência inicial: masterclass "Claude Code + Google Ads" (Jono), com adaptações e correções próprias.
 
 ### Changelog
+- **v0.6** — Conversões offline pela **Data Manager API** (a Google não aceita novos integradores em `UploadClickConversions` desde 15/06/2026). Escopo (ADR-009): o módulo de landing pages (M5) sai deste sistema e vira ferramenta paralela; aqui fica só o contrato de rastreamento. Geração em massa de campanhas vira "subida do que o assessor aprovou" (Fase 2).
 - **v0.5** — Alinhado ao [`MODELO-OPERACIONAL.md`](MODELO-OPERACIONAL.md). Negativas, lances e estrutura sempre como sugestão no dossiê semanal; varredura de termos alimenta o dossiê; pausa automática só pelo freio de emergência (ADR-008).
 - **v0.4** — AI Max para Pesquisa, Demand Gen e YouTube no mapa de hipóteses; GA4 e GTM server-side no rastreamento; `gbraid`/`wbraid` além do `gclid`; payload de conversão offline e conversões otimizadas para leads em código; portais e outras origens no CAC total; roadmap movido para o `ROADMAP.md` único.
 - **v0.3** — Conteúdo comum movido para o núcleo. Novos: landing pages em três níveis, Perfil da Empresa no Google, anúncios de chamada e formulário de lead, integração com brand kit (verificador de copy, ofertas, regras comerciais), destino WhatsApp com rastreamento, negativas vindas do playbook do segmento, auditoria de onboarding.
@@ -25,8 +26,9 @@ O Google **captura demanda**: atende quem já está procurando. O fator decisivo
 | Acesso à conta | Google Ads API (biblioteca oficial Python + GAQL) via Claude Code |
 | Pesquisa de palavras-chave | Planejador de Palavras-chave (API ou exportação) |
 | Cálculos | núcleo |
-| Geração em massa | skills (`/campanha`, `/anuncios`, `/negativas`, `/landing`) |
-| Landing pages | três níveis (§4.5) |
+| Conversões offline | Data Manager API (`events:ingest`) |
+| Subida do que o assessor aprovou | Google Ads API (Fase 2) |
+| Landing pages | **fora deste sistema** — ferramenta paralela ([ECOSSISTEMA.md](ECOSSISTEMA.md)) |
 
 Se surgir um conector MCP confiável para Google Ads, ele substitui só a camada de acesso.
 
@@ -82,7 +84,7 @@ Se surgir um conector MCP confiável para Google Ads, ele substitui só a camada
   | RLSA (remarketing na pesquisa) | primeiro teste de público quente | lista de visitantes com volume |
   | **AI Max para Pesquisa** (correspondência ampliada + títulos e páginas gerados pelo Google) | conta com termos-núcleo maduros, querendo descobrir buscas novas | conversão real retornando; negativas do playbook aplicadas; acompanhamento semanal dos termos e dos textos gerados contra o verificador de copy |
   | **Demand Gen** (YouTube, Discover, Gmail) | gerar demanda com vídeo/imagem, papel parecido com o Meta | criativos da taxonomia de ângulos; mesmo retorno de conversão |
-  | **YouTube** (vídeo in-stream/Shorts) | imobiliário, educação, marca pessoal — o vídeo do profissional vende confiança | roteiros do volante criativo (Meta §6.5) |
+  | **YouTube** (vídeo in-stream/Shorts) | imobiliário, educação, marca pessoal — o vídeo do profissional vende confiança | vídeos produzidos pela equipe de criação a partir do briefing do assessor (Meta §6.5) |
   | PMax | e-commerce com feed ou conta com muita conversão real | exclusões de marca e de termos; leitura dos relatórios de canal e de termos de pesquisa |
   | Display de remarketing | só como teste | público de visitantes com volume |
 
@@ -96,7 +98,7 @@ Se surgir um conector MCP confiável para Google Ads, ele substitui só a camada
 - **Recursos adicionais por maturidade:**
   - **Chamada** (anúncio/extensão de ligação) — serviços urgentes; com horário de atendimento.
   - **Formulário de lead** — baixo atrito; qualificação obrigatória via perguntas e retorno de status.
-  - **WhatsApp como destino** — via landing com botão rastreado (código na mensagem, núcleo §7.3).
+  - **WhatsApp como destino** — via página com botão rastreado (código na mensagem, núcleo §7.3); a página é da ferramenta paralela.
 
 ### M4 — Negativas
 
@@ -104,30 +106,17 @@ Se surgir um conector MCP confiável para Google Ads, ele substitui só a camada
 - **Varredura recorrente de termos de pesquisa**: classificação (geografia errada, intenção errada, emprego, concorrente…), justificativa, impacto em R$, aplicação só após aprovação.
 - Termos ambíguos checados pela intenção real (ex.: "contratação de X" pode ser vaga de emprego).
 
-### M5 — Landing pages em três níveis
+### M5 — Landing pages (fora deste sistema)
 
-| Nível | Quando | Como |
-|---|---|---|
-| **1. Site atual + inserção dinâmica** | maturidade baixa, verba pequena, site razoável | parâmetros na URL ajustam título/subtítulo à busca; nenhum site novo |
-| **2. Template parametrizado** | padrão para a maioria | uma página por oferta com blocos trocados por intenção; identidade do `marca.yaml`, conteúdo do `ofertas/` |
-| **3. Página dedicada** | termos de maior valor/volume | Next.js → GitHub → Vercel, título repetindo a busca |
-
-Em todos os níveis:
-- Formulário ou botão de WhatsApp visível sem rolar.
-- Prova social do `marca.yaml` (preferência por depoimentos em vídeo), vídeo do responsável quando a assinatura inclui pessoa.
-- Diferenciais e respostas a objeções vindos da oferta — **a mesma fonte dos anúncios e dos fluxos de WhatsApp**.
-- Aviso de privacidade e base legal (LGPD).
-- Captura de gclid + UTMs em campos ocultos.
-- Teste A/B de páginas seguindo o protocolo de testes do núcleo.
+Páginas são construídas por uma ferramenta paralela ([ECOSSISTEMA.md](ECOSSISTEMA.md)). Este sistema exige delas apenas o **contrato de rastreamento**: campos ocultos com `gclid`, `gbraid`, `wbraid`, `fbclid` e UTMs gravados no lead do Kommo, e a tag do Google disparando. A coerência de mensagem com os anúncios vem da mesma fonte (`marca.yaml`, `ofertas/`).
 
 ### M6 — Rastreamento e públicos
 
-- Tag do Google em todas as páginas, preferencialmente via **GTM server-side** em domínio próprio; **GA4** vinculado à conta para públicos e diagnóstico de comportamento na página (a fonte da verdade de conversão continua sendo o CRM).
+- Tag do Google, GTM e GA4 nas páginas: **ferramenta paralela**. Aqui o sistema só confere se as conversões estão chegando (urgência "tag sem disparar" e freio por rastreamento quebrado).
 - Conversões: formulário, ligação, clique no WhatsApp, e **eventos de qualidade do Kommo** como conversões offline (núcleo §7.2).
 - Captura de `gclid` e também de `gbraid`/`wbraid` (cliques vindos de iOS e apps, onde o `gclid` pode não vir).
 - Conversões otimizadas para leads (e-mail/telefone com hash) como complemento quando o identificador de clique se perde.
-- Implementação: `trilha/plataformas/google/conversoes_offline.py` monta o payload de `UploadClickConversions` (identificador de clique, ação de conversão, data/hora com fuso, valor, `user_identifiers` em hash); o envio usa a biblioteca oficial `google-ads` e entra no MVP depois do Meta.
-- Verificação automática da tag após cada publicação de página.
+- Implementação: `trilha/plataformas/google/conversoes_offline.py` monta o corpo da **Data Manager API** (`POST https://datamanager.googleapis.com/v1/events:ingest`: destino = conta + ação de conversão; evento com identificador de clique, `eventTimestamp` com fuso, `transactionId`, valor e `userData` em hash). O primeiro envio de cada cliente roda com `validateOnly` (`GOOGLE_DATA_MANAGER_VALIDAR=1`). A rota antiga, `UploadClickConversions` da Google Ads API, não aceita novos integradores desde 15/06/2026.
 - Público de visitantes para RLSA; display de remarketing apenas como teste.
 
 ### M7 — Negócio local
@@ -146,7 +135,7 @@ Urgências vão para o Slack na hora; o resto entra no dossiê semanal de otimiz
 | Orçamento limitado com CPA abaixo da meta | oportunidade de escala | dossiê |
 | Queda de parcela de impressões (classificação ou orçamento) | estatística do núcleo | dossiê |
 | Índice de qualidade caiu | por palavra-chave relevante | dossiê |
-| Termo novo com gasto relevante sem conversão | candidato a negativa | dossiê (sugestão de negativa) |
+| Termo novo com gasto relevante sem conversão | candidato a negativa | dossiê (ponto de atenção: candidato a negativa) |
 | Reprovação de anúncio ou de recurso | sempre | urgência |
 | Conversão / tag sem disparar após publicação | sempre | urgência (e freio, se gastando) |
 | Divergência Google × CRM | conversões na plataforma muito diferentes dos leads no Kommo | dossiê (urgência se > 50%) |
@@ -165,9 +154,6 @@ plataformas:
       excluir: []
     volume_minimo_termo: null # busca mensal mínima para entrar na matriz
     concorrentes: []          # decisão consciente: negativar ou disputar
-    landing:
-      nivel_padrao: 2         # 1 | 2 | 3
-      dominio: ""
     recursos: { chamada: false, formulario_lead: false, whatsapp: true }
     perfil_empresa_id: ""
 ```
@@ -184,11 +170,10 @@ trilha/plataformas/google/
 ├── estrutura/         # M2
 ├── anuncios/          # M3 (usa core/copy)
 ├── negativas/         # M4 (usa playbooks/<segmento>/negativas.md)
-├── landing/           # M5: inserção dinâmica, template, Next.js
 ├── rastreamento/      # M6 (conversoes_offline.py ✅)
 └── local/             # M7
 skills/
-├── campanha/  ├── anuncios/  ├── negativas/  └── landing/
+├── campanha/  ├── anuncios/  └── negativas/      # Fase 2: montar e subir o que o assessor aprovou
 ```
 
 ## 8. Roadmap Google

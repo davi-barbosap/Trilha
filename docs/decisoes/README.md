@@ -12,3 +12,4 @@ Cada decisão estrutural vira um arquivo curto: contexto, decisão, consequênci
 | [006](006-niveis-de-autonomia.md) | Níveis de autonomia L0–L3 por cliente e por tipo de ação | substituída pelo 008 |
 | [007](007-n8n-orquestrador.md) | n8n (no próprio servidor) como orquestrador; trilha-api como núcleo testado | aceita |
 | [008](008-freio-de-emergencia.md) | Fim do L2; freio de emergência como única ação automática (opção A padrão) | aceita |
+| [009](009-escopo-do-sistema.md) | Escopo: execução manual dos serviços de mídia; contato com o cliente é do assessor; landing pages, disparos, fluxos de CRM, BotConversa, GA4 e captura de tarefas são paralelos | aceita |

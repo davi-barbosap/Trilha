@@ -25,15 +25,13 @@ x-n8n: &n8n
     EXECUTIONS_DATA_PRUNE: "true"
     EXECUTIONS_DATA_MAX_AGE: "168"
     N8N_RUNNERS_ENABLED: "true"
-    # Os fluxos leem configuração por $env (TRILHA_API_URL etc.). Ver N8N.md, seção de segurança.
+    # n8n 2.x bloqueia $env por padrão. Liberado só para configuração de baixo risco (URL interna e
+    # webhook do Slack); o token da trilha-api fica numa credencial "Header Auth" do n8n. Ver N8N.md §5.
     N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     TRILHA_API_URL: http://trilha-api:8080
-    TRILHA_API_TOKEN: ${TRILHA_API_TOKEN}
-    KOMMO_WEBHOOK_TOKEN: ${KOMMO_WEBHOOK_TOKEN}
     SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
   volumes:
     - n8n_dados:/home/node/.n8n
-    - ./backup:/backup
   depends_on: [postgres, redis]
 
 services:
@@ -71,7 +69,7 @@ services:
       META_ACCESS_TOKEN: ${META_ACCESS_TOKEN}
       META_GRAPH_VERSION: ${META_GRAPH_VERSION}
       META_TEST_EVENT_CODE: ${META_TEST_EVENT_CODE}
-    env_file: [./kommo-tokens.env]              # KOMMO_TOKEN_<CLIENTE_ID>=... (um por cliente)
+    env_file: [./kommo-tokens.env]              # KOMMO_TOKEN_<CLIENTE> e KOMMO_WEBHOOK_TOKEN_<CLIENTE> (um par por cliente)
     volumes:
       - ${TRILHA_CLIENTES_DIR:?caminho do repositório privado trilha-clientes}:/clientes:ro
     # sem porta pública: só o n8n fala com a API, pela rede interna

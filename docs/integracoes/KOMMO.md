@@ -7,31 +7,36 @@
 ## 1. Antes de construir: o que já é nativo
 
 Verificar na conta do cliente, porque o que for nativo não precisa de código:
-- Integração do WhatsApp (API do WhatsApp Business) e gravação da origem da conversa.
+- Integração do WhatsApp (API do WhatsApp Business) e gravação da origem da conversa — e, quando o atendimento inicial é pelo **BotConversa** (ferramenta paralela), se ele repassa o `ctwa_clid` e as UTMs ao lead no Kommo.
 - Integração com formulários instantâneos do Meta (leads entram direto no funil).
 - Formulários de site do Kommo (capturam UTMs).
 - Integrações de eventos com o Meta disponíveis no marketplace do Kommo.
 
-O Trilha cobre o que costuma faltar: **mapa etapa → evento padronizado por cliente, retorno para Meta e Google com deduplicação, registro no banco e alertas**.
+O Trilha cobre o que costuma faltar: **mapa etapa → evento padronizado por cliente, retorno para Meta e Google com deduplicação, registro no banco e alertas**. Fluxos de atendimento, nutrição e disparos no Kommo **não** são deste sistema ([ECOSSISTEMA.md](../../ECOSSISTEMA.md)).
 
 ## 2. Fluxo
 
 ```
 Kommo: lead criado ou mudou de etapa
-  → webhook para o n8n: https://<dominio>/webhook/kommo/<cliente_id>?token=<KOMMO_WEBHOOK_TOKEN>
-  → W01 confere o token, responde 200 ao Kommo na hora (o Kommo não espera processamento)
-  → W01 chama a trilha-api: POST /conversao {cliente_id, corpo: <webhook como o n8n recebeu>}
+  → webhook para o n8n: https://<dominio>/webhook/kommo/<cliente_id>?token=<segredo DESTE cliente>
+  → W01 responde 200 ao Kommo na hora (o Kommo não espera processamento)
+  → W01 chama a trilha-api: POST /conversao {cliente_id, webhook_token, corpo}
      trilha-api (dados pessoais ficam só aqui):
-       → parse_webhook()             mudanças de etapa (aceita o corpo original ou já interpretado pelo n8n)
+       → confere o segredo do cliente (KOMMO_WEBHOOK_TOKEN_<CLIENTE>)      senão: 403
+       → confere a conta do corpo (account[subdomain]) com o perfil       senão: 403
+       → parse_webhook()             qual lead olhar e qual etapa o webhook diz
+       → KommoClient.dados_lead()    lê o lead e o contato principal (API v4, token KOMMO_TOKEN_<CLIENTE>)
+       → confirma a etapa            só segue se o lead ESTÁ na etapa que o webhook diz
        → mapa do perfil.yaml         etapa → evento padrão
-       → KommoClient.dados_lead()    campos personalizados + contatos (API v4, token KOMMO_TOKEN_<CLIENTE>)
-       → payloads com hash           Meta API de Conversões · Google conversão offline
+       → payloads com hash           Meta API de Conversões · Google Data Manager API
        → envia (só se TRILHA_SIMULAR=0) e devolve um resumo sem dado pessoal
-  → W01 avisa no Slack se algum evento foi pulado (sem identificador, perfil incompleto)
-  → falha em qualquer etapa → W10 (vigia de falhas)
+  → W01 avisa no Slack se algum evento foi pulado
+  → falha ou 403 → W10 (vigia de falhas)
 ```
 
-O Kommo não assina os webhooks: a URL leva um token secreto conferido no W01. A trilha-api não tem porta pública — só o n8n fala com ela.
+**Por que um segredo por cliente:** o admin do Kommo de cada cliente enxerga a URL do webhook. Com um segredo único, um cliente poderia mandar conversões falsas para a conta de anúncios de outro. Com segredo próprio, conta conferida e etapa confirmada no Kommo, um webhook forjado não gera conversão.
+
+**Repetições são seguras:** se o n8n repetir a chamada, Meta deduplica por `event_id` e Google por `transactionId` (ambos `kommo-<lead>-<evento>`).
 
 ## 3. Configuração por cliente (`perfil.yaml`)
 
@@ -86,11 +91,12 @@ crm:
 
 | Funcionalidade | Para quê |
 |---|---|
-| Tempo até o primeiro contato por corretor | SLA real (marca.yaml) e alerta |
+| Tempo até o primeiro contato por corretor/atendente do cliente | bloco "funil do cliente" do dossiê e bloco "leads" do relatório |
 | Taxa de qualificação por corretor × por campanha | separa problema de atendimento de problema de mídia |
-| Motivos de perda por oferta | alimentam `objecoes` da oferta e novos ângulos de criativo |
-| Reativação de leads frios | listas para público personalizado (em hash) + fluxo de nutrição |
-| Divergência plataforma × CRM | alerta quando leads na plataforma e no Kommo se descolam |
+| Motivos de perda por oferta | pacote de briefing e bloco "leads" do relatório |
+| Divergência plataforma × Kommo | ponto de atenção no dossiê (urgência se > 50%) |
+
+Reativação de leads frios e nutrição são fluxos de CRM — ferramenta paralela.
 
 ## 7. Testar localmente (sem n8n)
 

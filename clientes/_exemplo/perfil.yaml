@@ -4,7 +4,7 @@ versao: 1
 vigente_desde: 2026-10-01
 
 cliente:
-  id: exemplo
+  id: _exemplo                    # igual ao nome da pasta
   nome: Imobiliária Exemplo
   segmento: imobiliario
 
@@ -65,18 +65,18 @@ conversao:
     venda:            { meta_event_name: Purchase,         google_conversion_action_id: "900000004", valor: receita }
     # desqualificado e reativado: uso interno, sem destino
 
-# Freio de emergência (ADR-008) — a única ação automática. Todo o resto vira sugestão no dossiê semanal.
+# Freio de emergência (ADR-008) — a única ação automática. Todo o resto vira ponto de atenção no dossiê semanal; quem decide é o assessor.
 freio:
   modo: pausar                    # pausar (opção A, padrão) | avisar (opção B: só avisa)
   gasto_sem_lead_multiplo: 3      # pausa campanha que gastou 3× o CPL máximo desde o último lead
   horas_rastreamento_quebrado: 6  # pausa campanha gastando há 6h sem nenhum evento de conversão
 
-# Agenda dos rituais humanos (MODELO-OPERACIONAL.md) — o sistema prepara cada um na véspera.
+# Agenda do assessor (MODELO-OPERACIONAL.md) — o sistema deixa o material pronto na véspera.
+# Contatos proativos e respostas ao cliente são do assessor e não entram aqui.
 operacao:
   responsavel: Assessor responsável
   faixa: performance              # essencial | performance | escala
-  dia_otimizacao: segunda
-  dia_contato: terca
+  dia_otimizacao: segunda         # dossiê de otimização na véspera
+  dia_relatorio: quinta           # números do relatório semanal (leads · criativos · ações) na véspera
   semana_reuniao: 1               # 1ª semana do mês
-  dia_reuniao: sexta
-  canal_contato: whatsapp
+  dia_reuniao: sexta              # pacote da reunião dois dias úteis antes
