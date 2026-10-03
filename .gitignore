@@ -1,0 +1,21 @@
+# Segredos
+.env
+*.pem
+credenciais*.json
+
+# Dados de clientes ficam no repositório privado trilha-clientes (ADR-004)
+clientes/*
+!clientes/_exemplo/
+!clientes/README.md
+
+# Logs locais do pipeline
+logs/
+*.jsonl
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/

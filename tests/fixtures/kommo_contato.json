@@ -1,0 +1,8 @@
+{
+  "id": 111,
+  "name": "Contato Exemplo",
+  "custom_fields_values": [
+    {"field_id": 1, "field_name": "Telefone", "field_code": "PHONE", "values": [{"value": "+55 (11) 98765-4321", "enum_code": "MOB"}]},
+    {"field_id": 2, "field_name": "E-mail", "field_code": "EMAIL", "values": [{"value": "  Cliente.Exemplo@Email.com ", "enum_code": "WORK"}]}
+  ]
+}

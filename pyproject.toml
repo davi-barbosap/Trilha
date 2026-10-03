@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trilha"
+version = "0.4.0"
+description = "Núcleo de automação de mídia paga (Meta Ads e Google Ads) agnóstico de cliente"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.5",
+    "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+google = ["google-ads>=25"]
+
+[project.scripts]
+trilha = "trilha.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["trilha*"]

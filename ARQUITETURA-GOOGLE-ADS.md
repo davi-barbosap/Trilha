@@ -1,11 +1,12 @@
-# Sistema de Automação Google Ads com Claude — Arquitetura v0.3
+# Sistema de Automação Google Ads com Claude — Arquitetura v0.4
 
-> Status: rascunho de arquitetura · 2026-10-02
+> Status: arquitetura + MVP em construção · 2026-10-03
 > **Leia primeiro:** [`ARQUITETURA-NUCLEO.md`](ARQUITETURA-NUCLEO.md) — estratégia, onboarding, perfil, brand kit, playbooks, conversão real, estatística e governança são compartilhados e não se repetem aqui.
 > Documento irmão: [`ARQUITETURA-META-ADS.md`](ARQUITETURA-META-ADS.md)
 > Referência inicial: masterclass "Claude Code + Google Ads" (Jono), com adaptações e correções próprias.
 
 ### Changelog
+- **v0.4** — AI Max para Pesquisa, Demand Gen e YouTube no mapa de hipóteses; GA4 e GTM server-side no rastreamento; `gbraid`/`wbraid` além do `gclid`; payload de conversão offline e conversões otimizadas para leads em código; portais e outras origens no CAC total; roadmap movido para o `ROADMAP.md` único.
 - **v0.3** — Conteúdo comum movido para o núcleo. Novos: landing pages em três níveis, Perfil da Empresa no Google, anúncios de chamada e formulário de lead, integração com brand kit (verificador de copy, ofertas, regras comerciais), destino WhatsApp com rastreamento, negativas vindas do playbook do segmento, auditoria de onboarding.
 - **v0.2** — (sem versão própria; numeração alinhada ao núcleo e ao Meta)
 - **v0.1** — Acesso via API, seis módulos, conversões offline, correções à referência.
@@ -73,7 +74,16 @@ Se surgir um conector MCP confiável para Google Ads, ele substitui só a camada
   - recomendações automáticas **desligadas**;
   - públicos apenas em observação na pesquisa fria.
 - **Lances** seguindo a escada de evento do núcleo: maximizar conversões (lead) → CPA-alvo (lead qualificado) → ROAS-alvo (venda com valor), cada degrau liberado por volume mínimo.
-- Formatos opcionais, decididos pela Camada 0: PMax e display tratados como **hipóteses a testar**, nunca padrão; remarketing na pesquisa (RLSA) como primeiro teste de público quente.
+- Formatos opcionais, decididos pela Camada 0 e testados pelo protocolo do núcleo (§9.4) — **hipóteses a testar, nunca padrão**:
+
+  | Formato | Quando testar | Pré-requisito |
+  |---|---|---|
+  | RLSA (remarketing na pesquisa) | primeiro teste de público quente | lista de visitantes com volume |
+  | **AI Max para Pesquisa** (correspondência ampliada + títulos e páginas gerados pelo Google) | conta com termos-núcleo maduros, querendo descobrir buscas novas | conversão real retornando; negativas do playbook aplicadas; acompanhamento semanal dos termos e dos textos gerados contra o verificador de copy |
+  | **Demand Gen** (YouTube, Discover, Gmail) | gerar demanda com vídeo/imagem, papel parecido com o Meta | criativos da taxonomia de ângulos; mesmo retorno de conversão |
+  | **YouTube** (vídeo in-stream/Shorts) | imobiliário, educação, marca pessoal — o vídeo do profissional vende confiança | roteiros do volante criativo (Meta §6.5) |
+  | PMax | e-commerce com feed ou conta com muita conversão real | exclusões de marca e de termos; leitura dos relatórios de canal e de termos de pesquisa |
+  | Display de remarketing | só como teste | público de visitantes com volume |
 
 ### M3 — Anúncios responsivos (RSA) e extensões
 
@@ -111,8 +121,11 @@ Em todos os níveis:
 
 ### M6 — Rastreamento e públicos
 
-- Tag do Google em todas as páginas; conversões: formulário, ligação, clique no WhatsApp, e **eventos de qualidade do Kommo** como conversões offline (núcleo §7.2).
-- Conversões otimizadas para leads (dados com hash) como complemento quando o gclid se perde.
+- Tag do Google em todas as páginas, preferencialmente via **GTM server-side** em domínio próprio; **GA4** vinculado à conta para públicos e diagnóstico de comportamento na página (a fonte da verdade de conversão continua sendo o CRM).
+- Conversões: formulário, ligação, clique no WhatsApp, e **eventos de qualidade do Kommo** como conversões offline (núcleo §7.2).
+- Captura de `gclid` e também de `gbraid`/`wbraid` (cliques vindos de iOS e apps, onde o `gclid` pode não vir).
+- Conversões otimizadas para leads (e-mail/telefone com hash) como complemento quando o identificador de clique se perde.
+- Implementação: `trilha/plataformas/google/conversoes_offline.py` monta o payload de `UploadClickConversions` (identificador de clique, ação de conversão, data/hora com fuso, valor, `user_identifiers` em hash); o envio usa a biblioteca oficial `google-ads` e entra no MVP depois do Meta.
 - Verificação automática da tag após cada publicação de página.
 - Público de visitantes para RLSA; display de remarketing apenas como teste.
 
@@ -161,7 +174,7 @@ Serviços, ofertas, horário e regras comerciais vêm de `ofertas/` e `marca.yam
 ## 7. Estrutura no repositório
 
 ```
-plataformas/google/
+trilha/plataformas/google/
 ├── conector/          # API, GAQL, autenticação, normalização
 ├── auditoria/         # checklist de onboarding, estimativa de desperdício
 ├── palavras_chave/    # M1
@@ -169,7 +182,7 @@ plataformas/google/
 ├── anuncios/          # M3 (usa core/copy)
 ├── negativas/         # M4 (usa playbooks/<segmento>/negativas.md)
 ├── landing/           # M5: inserção dinâmica, template, Next.js
-├── rastreamento/      # M6
+├── rastreamento/      # M6 (conversoes_offline.py ✅)
 └── local/             # M7
 skills/
 ├── campanha/  ├── anuncios/  ├── negativas/  └── landing/
@@ -177,14 +190,7 @@ skills/
 
 ## 8. Roadmap Google
 
-1. Acesso à API + auditoria de onboarding (com estimativa de desperdício).
-2. Relatório diário e alertas operacionais (usando o núcleo).
-3. M4 Negativas — maior economia imediata.
-4. M6 + eventos de qualidade do Kommo como conversões offline.
-5. M1 + M2 com padrões de proteção.
-6. M3 com verificador de copy.
-7. M5 começando pelo nível 2 (template parametrizado).
-8. M7 e auditoria semanal.
+Movido para o [`ROADMAP.md`](ROADMAP.md) único (núcleo + plataformas, com corte de MVP).
 
 ## 9. Riscos específicos
 
@@ -194,3 +200,4 @@ skills/
 - Páginas geradas em massa exigem revisão de promessas e compliance do segmento.
 - Sem conversão real, lances inteligentes otimizam para formulário, inclusive spam.
 - Opiniões fortes da referência (PMax, display) são hipóteses por cliente, não regra.
+- AI Max e PMax geram títulos e escolhem páginas automaticamente: em segmentos com compliance (imobiliário, saúde, crédito) isso exige revisão recorrente dos textos e destinos gerados.

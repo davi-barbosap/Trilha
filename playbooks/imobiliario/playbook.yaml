@@ -1,0 +1,44 @@
+# Playbook imobiliário — padrões do segmento (núcleo §6). Derivado do briefing-trilha (ADR-005).
+# Tudo aqui é ponto de partida: o perfil do cliente sobrescreve e marca o que ainda é estimado.
+segmento: imobiliario
+
+economia_padrao:
+  modelo_receita: comissao
+  comissao_pct: 0.05            # lançamento costuma ser menor que usado; confirmar com o cliente
+  participacao_comissao: 0.5    # parte que fica com a imobiliária após repasse ao corretor
+  margem_contribuicao: 0.5
+  pct_investivel: 0.5
+  taxa_fechamento: 0.01         # conservador; 0,5%–2% é a faixa comum (lead → venda)
+  taxa_qualificacao: 0.25
+  taxa_agendamento: 0.05
+
+eixos_objecao: [preco, produto, localizacao]   # todos obrigatórios na régua de criativos e de nutrição
+
+regras_comerciais_padrao:
+  preco: { anuncio: parcela, whatsapp: nunca, landing: a_partir_de }
+
+compliance:
+  registros_profissionais: [CRECI]
+  categoria_especial_anuncio: verificar   # habitação: regras variam por plataforma e país
+
+fontes_de_lead:                 # entram no CRM com origem padronizada e no CAC total
+  - meta
+  - google
+  - portal_zap
+  - portal_vivareal
+  - portal_olx
+  - indicacao
+  - organico
+
+calendario:
+  - { periodo: "jan–fev", nota: "retomada de busca pós-férias" }
+  - { periodo: "mar", nota: "feirões de financiamento costumam ocorrer" }
+  - { periodo: "nov", nota: "Black Friday imobiliária — condições com prazo" }
+  - { periodo: "dez (2ª quinzena)", nota: "queda de demanda; reduzir verba de teste" }
+
+fluxos_atendimento:
+  - pre_atendimento
+  - follow_up_curto
+  - nutricao_por_eixo
+  - apresentacao_escalonada
+  - pre_atendimento_1x1_escalonado
