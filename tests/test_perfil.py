@@ -37,9 +37,14 @@ class TestPerfil(unittest.TestCase):
         with self.assertRaises(ValidationError):
             Perfil.model_validate(bruto)
 
-    def test_autonomia_antiga_nao_existe_mais(self):
+    def test_bloco_autonomia_antigo_e_ignorado_sem_quebrar(self):
         bruto = copy.deepcopy(self.bruto)
-        bruto["autonomia"] = {"orcamento": "L2"}
+        bruto["autonomia"] = {"negativas_obvias": "L1"}
+        self.assertEqual(Perfil.model_validate(bruto).freio.modo, "pausar")
+
+    def test_cliente_id_no_formato_de_pasta(self):
+        bruto = copy.deepcopy(self.bruto)
+        bruto["cliente"]["id"] = "../outro"
         with self.assertRaises(ValidationError):
             Perfil.model_validate(bruto)
 

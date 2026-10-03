@@ -1,14 +1,13 @@
-# Registro de decisões de arquitetura (ADRs)
+# Decisões de arquitetura
 
-Cada decisão estrutural vira um arquivo curto: contexto, decisão, consequências. Uma decisão só muda com um novo ADR que substitui o anterior.
+Cada decisão estrutural é um arquivo curto: contexto, decisão, consequências. Mudar uma decisão = editar o arquivo dela (o histórico fica no Git).
 
 | ADR | Decisão | Status |
 |---|---|---|
-| [001](001-armazenamento.md) | Postgres para eventos/alterações/decisões; BigQuery para histórico de mídia | aceita |
-| [002](002-orquestracao.md) | Cloud Run (webhooks + agendador); no-code fora do caminho crítico | substituída pelo 007 |
+| [001](001-armazenamento.md) | Postgres para eventos, alterações e decisões; BigQuery para histórico de mídia | aceita |
+| [002](002-n8n-orquestrador.md) | n8n autohospedado como orquestrador; trilha-api como núcleo testado | aceita |
 | [003](003-painel.md) | Looker Studio sobre BigQuery; Metabase como alternativa | aceita |
 | [004](004-dados-de-clientes.md) | Dados de clientes fora do repositório de código | aceita |
 | [005](005-dependencia-briefing-trilha.md) | Consumo do briefing-trilha por versão fixada e contrato de dados | proposta — depende da responsável pelo repositório |
-| [006](006-niveis-de-autonomia.md) | Níveis de autonomia L0–L3 por cliente e por tipo de ação | substituída pelo 008 |
-| [007](007-n8n-orquestrador.md) | n8n (no próprio servidor) como orquestrador; trilha-api como núcleo testado | aceita |
-| [008](008-freio-de-emergencia.md) | Fim do L2; freio de emergência como única ação automática (opção A padrão) | aceita |
+| [006](006-freio-de-emergencia.md) | Freio de emergência como única ação automática | aceita |
+| [007](007-escopo-do-sistema.md) | Escopo: execução manual dos serviços de mídia; o resto é paralelo | aceita |

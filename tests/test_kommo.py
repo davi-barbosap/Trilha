@@ -2,7 +2,7 @@ import json
 import unittest
 from pathlib import Path
 
-from trilha.integracoes.kommo import extrair_dados_lead, parse_webhook
+from trilha.integracoes.kommo import extrair_dados_lead, parse_webhook, subdominio_do_webhook
 
 FIX = Path(__file__).parent / "fixtures"
 CAMPOS = {"gclid": "gclid", "fbclid": "fbclid", "ctwa_clid": "ctwa_clid", "utm_content": "utm_content", "utm_source": "504"}
@@ -32,8 +32,15 @@ class TestKommo(unittest.TestCase):
         self.assertEqual(d.utm["utm_source"], "google")  # casado pelo field_id
         self.assertTrue(d.utm["utm_content"].startswith("PRECO_"))
         self.assertEqual(d.valor, 560000)
+        self.assertEqual((d.status_id, d.pipeline_id), (3333, 1111))
         self.assertEqual(d.telefones, ["+55 (11) 98765-4321"])
         self.assertEqual(len(d.emails), 1)
+
+
+    def test_subdominio_do_webhook(self):
+        self.assertEqual(subdominio_do_webhook((FIX / "kommo_webhook.txt").read_text()), "imobiliaria-exemplo")
+        self.assertEqual(subdominio_do_webhook({"account": {"subdomain": "outra"}}), "outra")
+        self.assertIsNone(subdominio_do_webhook({"leads": {}}))
 
 
 if __name__ == "__main__":

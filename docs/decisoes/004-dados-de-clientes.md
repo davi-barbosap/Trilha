@@ -1,9 +1,9 @@
 # ADR-004 — Dados de clientes fora do repositório de código
 
-**Status:** aceita · 2026-10-03
+**Status:** aceita
 
 ## Contexto
-A v0.3 previa `clientes/<cliente>/` dentro deste repositório, com margem, ticket, regras comerciais e histórico. Isso mistura código (que pode ser compartilhado com freelancers e ferramentas) com dado sensível de negócio e, eventualmente, dado pessoal (LGPD).
+Guardar `clientes/<cliente>/` (margem, ticket, regras comerciais, histórico) dentro deste repositório misturaria código (que pode ser compartilhado com freelancers e ferramentas) com dado sensível de negócio e, eventualmente, dado pessoal (LGPD).
 
 ## Decisão
 - Este repositório guarda apenas `clientes/_exemplo/`. O `.gitignore` bloqueia qualquer outra pasta em `clientes/`.

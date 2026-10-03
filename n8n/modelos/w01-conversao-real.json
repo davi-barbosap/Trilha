@@ -8,7 +8,7 @@
       "typeVersion": 2,
       "position": [
         0,
-        300
+        200
       ],
       "webhookId": "trilha-w01-kommo",
       "parameters": {
@@ -19,67 +19,18 @@
       }
     },
     {
-      "id": "w01-token",
-      "name": "Token confere?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        240,
-        300
-      ],
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "cond-token",
-              "leftValue": "={{ $json.query.token }}",
-              "rightValue": "={{ $env.KOMMO_WEBHOOK_TOKEN }}",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      }
-    },
-    {
       "id": "w01-ok",
       "name": "Responder 200 ao Kommo",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        480,
+        240,
         200
       ],
       "parameters": {
         "respondWith": "text",
         "responseBody": "ok",
         "options": {}
-      }
-    },
-    {
-      "id": "w01-negado",
-      "name": "Responder 403",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        480,
-        420
-      ],
-      "parameters": {
-        "respondWith": "text",
-        "responseBody": "forbidden",
-        "options": {
-          "responseCode": 403
-        }
       }
     },
     {
@@ -92,25 +43,25 @@
         200
       ],
       "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
+      "maxTries": 2,
+      "waitBetweenTries": 30000,
       "parameters": {
         "method": "POST",
         "url": "={{ $env.TRILHA_API_URL }}/conversao",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.TRILHA_API_TOKEN }}"
-            }
-          ]
-        },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ cliente_id: $('Webhook Kommo').item.json.params.cliente, corpo: $('Webhook Kommo').item.json.body, simular: false }) }}",
+        "jsonBody": "={{ JSON.stringify({ cliente_id: $('Webhook Kommo').item.json.params.cliente, webhook_token: $('Webhook Kommo').item.json.query.token, corpo: $('Webhook Kommo').item.json.body, simular: false }) }}",
         "options": {
-          "timeout": 30000
+          "timeout": 120000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "notes": "A trilha-api confere o segredo do cliente (KOMMO_WEBHOOK_TOKEN_<CLIENTE>), a conta Kommo e a etapa real do lead. 403 aqui = tentativa recusada; o W10 avisa. Repetições são seguras: Meta deduplica por event_id e Google por orderId.",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "DEFINIR_APOS_IMPORTAR",
+          "name": "trilha-api (Authorization: Bearer …)"
         }
       }
     },
@@ -170,25 +121,7 @@
       "main": [
         [
           {
-            "node": "Token confere?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Token confere?": {
-      "main": [
-        [
-          {
             "node": "Responder 200 ao Kommo",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Responder 403",
             "type": "main",
             "index": 0
           }

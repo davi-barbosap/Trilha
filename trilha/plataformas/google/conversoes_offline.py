@@ -1,7 +1,10 @@
-"""Google Ads — conversões offline e conversões otimizadas para leads (Google M6, núcleo §7).
+"""Google Ads — conversões offline pela Data Manager API (Google M6, núcleo §7).
 
-Monta o corpo de `customers/{id}:uploadClickConversions` (formato JSON da API REST).
-O envio usa a biblioteca oficial `google-ads` (pip install trilha[google]) — próximo passo do MVP.
+Desde 15/06/2026 a Google não aceita novos integradores em
+`ConversionUploadService.UploadClickConversions` (Google Ads API): conversões offline
+entram pela Data Manager API (`POST https://datamanager.googleapis.com/v1/events:ingest`).
+Este módulo monta o corpo dessa chamada. Antes do primeiro envio real, conferir os campos
+na referência oficial e testar com `validateOnly: true`.
 """
 
 from __future__ import annotations
@@ -12,54 +15,65 @@ from datetime import datetime
 from trilha.conversao.hash import hash_email, hash_telefone_google
 from trilha.integracoes.kommo import DadosLead
 
+URL_INGESTAO = "https://datamanager.googleapis.com/v1/events:ingest"
+
 
 def _so_digitos(customer_id: str) -> str:
     return re.sub(r"\D", "", customer_id)
 
 
 def formatar_data_hora(quando: datetime) -> str:
-    """Formato exigido: 'aaaa-mm-dd hh:mm:ss+hh:mm' (com fuso)."""
+    """RFC 3339 com fuso (ex.: 2026-10-03T12:00:00-03:00)."""
     if quando.tzinfo is None:
         raise ValueError("data/hora da conversão precisa de fuso horário")
-    texto = quando.strftime("%Y-%m-%d %H:%M:%S%z")
-    return texto[:-2] + ":" + texto[-2:]
+    return quando.isoformat(timespec="seconds")
 
 
-def montar_conversao(
-    customer_id: str,
-    conversion_action_id: str,
+def montar_evento(
     dados: DadosLead,
     quando: datetime,
-    order_id: str,
+    transaction_id: str,
     valor: float | None = None,
     moeda: str = "BRL",
 ) -> dict | None:
-    """Uma conversão por identificador de clique; sem ele, por e-mail/telefone em hash. Sem nada, None."""
-    cid = _so_digitos(customer_id)
-    conversao: dict = {
-        "conversionAction": f"customers/{cid}/conversionActions/{conversion_action_id}",
-        "conversionDateTime": formatar_data_hora(quando),
-        "orderId": order_id,  # deduplicação
+    """Um evento por identificador de clique; sem ele, por e-mail/telefone em hash. Sem nada, None."""
+    evento: dict = {
+        "eventTimestamp": formatar_data_hora(quando),
+        "transactionId": transaction_id,  # deduplicação
     }
-    for chave in ("gclid", "gbraid", "wbraid"):  # a API aceita só um
+    for chave in ("gclid", "gbraid", "wbraid"):  # um só identificador de clique
         if dados.ids.get(chave):
-            conversao[chave] = dados.ids[chave]
+            evento["adIdentifiers"] = {chave: dados.ids[chave]}
             break
 
-    identificadores = [{"hashedEmail": h} for h in sorted({h for h in map(hash_email, dados.emails) if h})]
+    identificadores = [{"emailAddress": h} for h in sorted({h for h in map(hash_email, dados.emails) if h})]
     identificadores += [
-        {"hashedPhoneNumber": h} for h in sorted({h for h in map(hash_telefone_google, dados.telefones) if h})
+        {"phoneNumber": h} for h in sorted({h for h in map(hash_telefone_google, dados.telefones) if h})
     ]
     if identificadores:
-        conversao["userIdentifiers"] = identificadores
+        evento["userData"] = {"userIdentifiers": identificadores}
 
-    if not any(k in conversao for k in ("gclid", "gbraid", "wbraid", "userIdentifiers")):
+    if "adIdentifiers" not in evento and "userData" not in evento:
         return None
     if valor is not None:
-        conversao.update(conversionValue=round(valor, 2), currencyCode=moeda)
-    return conversao
+        evento.update(conversionValue=round(valor, 2), currency=moeda)
+    return evento
 
 
-def montar_requisicao(customer_id: str, conversoes: list[dict]) -> tuple[str, dict]:
-    cid = _so_digitos(customer_id)
-    return f"customers/{cid}:uploadClickConversions", {"conversions": conversoes, "partialFailure": True}
+def montar_requisicao(
+    customer_id: str,
+    conversion_action_id: str,
+    eventos: list[dict],
+    login_customer_id: str | None = None,
+    validar_apenas: bool = False,
+) -> tuple[str, dict]:
+    destino: dict = {
+        "operatingAccount": {"accountType": "GOOGLE_ADS", "accountId": _so_digitos(customer_id)},
+        "productDestinationId": str(conversion_action_id),
+    }
+    if login_customer_id:  # acesso pela MCC da agência
+        destino["loginAccount"] = {"accountType": "GOOGLE_ADS", "accountId": _so_digitos(login_customer_id)}
+    corpo = {"destinations": [destino], "encoding": "HEX", "events": eventos}
+    if validar_apenas:
+        corpo["validateOnly"] = True
+    return URL_INGESTAO, corpo

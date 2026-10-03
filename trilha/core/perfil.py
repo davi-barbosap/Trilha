@@ -1,4 +1,4 @@
-"""Esquema validado do perfil.yaml do cliente (núcleo §4, §7.2, §10; MODELO-OPERACIONAL.md).
+"""Esquema validado do perfil.yaml do cliente (núcleo §4, §7.2, §10; modelo-operacional.md).
 
 O perfil é o contrato entre o onboarding (wizard do briefing-trilha ou preenchimento
 manual) e o núcleo: nenhum módulo liga com um perfil que não passe por aqui.
@@ -27,8 +27,15 @@ class _Base(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+# Mesmo formato do nome da pasta do cliente em trilha-clientes (e do cliente_id da API).
+ClienteId = Annotated[str, Field(pattern=r"^[a-z0-9_][a-z0-9_-]{0,63}$")]
+
+# Blocos de versões anteriores: ignorados, com aviso no `validar`.
+BLOCOS_LEGADOS = {"autonomia": "substituído pelo bloco freio (ADR-006); pode ser apagado"}
+
+
 class Cliente(_Base):
-    id: str
+    id: ClienteId
     nome: str
     segmento: str  # aponta para playbooks/<segmento>/
 
@@ -140,7 +147,7 @@ class Conversao(_Base):
 
 
 class Freio(_Base):
-    """Freio de emergência (ADR-008): a única ação automática do sistema.
+    """Freio de emergência (ADR-006): a única ação automática do sistema.
 
     modo "pausar" (opção A, padrão): pausa e avisa na hora; desfazer é um clique.
     modo "avisar" (opção B): só avisa; a pausa fica com o responsável.
@@ -152,18 +159,27 @@ class Freio(_Base):
 
 
 class Operacao(_Base):
-    """Agenda dos rituais humanos com o cliente — o sistema prepara cada um na véspera."""
+    """Agenda do assessor com o cliente — o sistema deixa pronto, na véspera, o material de cada compromisso.
+
+    Contato com o cliente (contatos proativos, respostas no grupo) é do assessor e não entra aqui.
+    """
 
     responsavel: str
     dia_otimizacao: DiaUtil
-    dia_contato: DiaUtil
+    dia_relatorio: DiaUtil
     semana_reuniao: Annotated[int, Field(ge=1, le=4)]  # semana do mês da reunião mensal
     dia_reuniao: DiaUtil = "sexta"
-    canal_contato: Literal["whatsapp", "email", "ligacao"] = "whatsapp"
     faixa: Literal["essencial", "performance", "escala"] = "essencial"
 
 
 class Perfil(_Base):
+    @model_validator(mode="before")
+    @classmethod
+    def _ignorar_legado(cls, dados):
+        if isinstance(dados, dict) and any(b in dados for b in BLOCOS_LEGADOS):
+            dados = {k: v for k, v in dados.items() if k not in BLOCOS_LEGADOS}
+        return dados
+
     versao: Annotated[int, Field(ge=1)]
     vigente_desde: date
     cliente: Cliente
@@ -175,6 +191,12 @@ class Perfil(_Base):
     conversao: Conversao = Field(default_factory=Conversao)
     freio: Freio = Field(default_factory=Freio)
     operacao: Operacao | None = None
+
+
+def avisos_legado(caminho: str | Path) -> list[str]:
+    with open(caminho, encoding="utf-8") as f:
+        bruto = yaml.safe_load(f) or {}
+    return [f"bloco '{b}' ignorado: {motivo}" for b, motivo in BLOCOS_LEGADOS.items() if b in bruto]
 
 
 def carregar_perfil(caminho: str | Path) -> Perfil:

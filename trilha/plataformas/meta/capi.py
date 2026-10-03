@@ -11,7 +11,7 @@ import urllib.request
 from trilha.conversao.hash import hash_email, hash_telefone_meta
 from trilha.integracoes.kommo import DadosLead
 
-VERSAO_PADRAO = os.environ.get("META_GRAPH_VERSION", "v23.0")  # conferir a versão vigente da Graph API
+VERSAO_PADRAO = os.environ.get("META_GRAPH_VERSION", "v26.0")  # revisar a cada versão nova da Graph API
 
 
 def tem_identificador(dados: DadosLead) -> bool:

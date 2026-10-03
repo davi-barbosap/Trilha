@@ -1,4 +1,3 @@
-# trilha-api — núcleo testado chamado pelos fluxos do n8n (ADR-007)
 FROM python:3.11-slim
 WORKDIR /app
 COPY pyproject.toml ./

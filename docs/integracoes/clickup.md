@@ -1,0 +1,55 @@
+# Integração ClickUp
+
+> Quem faz o quê: [modelo operacional](../modelo-operacional.md) · Escopo: [ecossistema](../ecossistema.md) · Fluxos: [n8n](n8n.md) (W06, W07, W08, W11, W12, W14)
+> Princípio: o ClickUp é **a mesa de trabalho do assessor**. O material que o sistema prepara chega como tarefa; a decisão do assessor é tomada na tarefa. O Trilha não tem tela própria.
+
+## 1. Espaço padrão
+
+```
+Espaço "Trilha"
+├── Pasta por cliente
+│   ├── Lista "Otimização semanal"   ← um dossiê por semana (W12)
+│   ├── Lista "Relatório semanal"    ← números da semana em três blocos (W07)
+│   ├── Lista "Briefings"            ← pacote de dados do briefing (W08)
+│   ├── Lista "Reuniões"             ← pacote da reunião mensal (W11)
+│   └── Lista "Testes"               ← protocolo de testes (núcleo §9.4)
+├── Lista "Carteira"                 ← painel da carteira para a reunião de equipe (W14)
+└── Lista "Decisões"                 ← o que o assessor decidiu → o que aconteceu, todas as contas
+```
+
+Demais listas da operação (demandas do cliente, criação, onboarding) seguem o padrão da equipe e são alimentadas pela **automação paralela de captura de tarefas** ([ecossistema](../ecossistema.md)), não por este sistema.
+
+## 2. Sessão semanal de otimização (W12 → W06)
+
+```
+Véspera do dia_otimizacao, 16:00 — W12 cria "Otimização · <cliente> · semana NN"
+  descrição: placar, mudanças, decisões anteriores e efeito, pontos de atenção (com números e simulação),
+             testes, freio, funil do cliente
+
+Na sessão, o assessor decide. Para mudanças simples (orçamento, pausar, ativar), cria uma subtarefa
+pelo modelo "Ação" (plataforma, entidade, mudança) e muda o status para "Aprovado":
+  W06 confere a assinatura do webhook do ClickUp e se a entidade ainda está no estado "antes";
+      executa, registra no histórico de alterações e comenta o resultado.
+  Se a conta mudou entre o dossiê e a aprovação, não executa e devolve a subtarefa com a diferença.
+Campanhas e anúncios novos o assessor cria direto nas plataformas (subida pelo sistema: evolução futura, ver roadmap).
+```
+
+## 3. Relatório semanal (W07)
+
+Tarefa "Relatório · <cliente> · semana NN", criada na véspera do `dia_relatorio`, com os números e gráficos em três blocos — **leads**, **criativos**, **ações**. O assessor escreve os insights no campo "Leitura do assessor", escolhe o formato e entrega ao cliente pelo canal dele. O sistema não envia nada.
+
+## 4. Briefing de criativo (W08)
+
+Junto com o dossiê, ou quando o assessor muda uma tarefa da lista "Briefings" para "Gerar pacote": dados do que converte e do que cansou, objeções e motivos de perda, diferenciais da oferta, e o modelo de briefing do time de criação com esses campos preenchidos. A estratégia (ângulo, mensagem, pedido) é escrita pelo assessor; depois a tarefa segue o fluxo normal da equipe de criação.
+
+## 5. Reunião mensal (W11)
+
+Tarefa "Reunião mensal · <cliente> · <mês>", dois dias úteis antes, com o pacote (documento ou slides com os dados). A narrativa e a condução são do assessor. Os combinados viram tarefas pela automação paralela de captura.
+
+## 6. Painel da carteira (W14)
+
+Tarefa semanal em "Carteira": semáforo por cliente, freio acionado na semana, tarefas atrasadas por pessoa e criativos pendentes (lidos das listas da equipe), tokens de integração perto de vencer.
+
+## 7. Implementação
+
+API v2 do ClickUp com token em `.env` (`CLICKUP_TOKEN`); webhooks do ClickUp com assinatura conferida (`CLICKUP_WEBHOOK_SECRET`). Os gatilhos rodam nos fluxos do n8n ([n8n](n8n.md)); a decisão de executar (estado "antes" igual, valor dentro do teto contratado) passa pela trilha-api.

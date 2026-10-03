@@ -1,6 +1,6 @@
 """Integração Kommo: parser de webhook, leitura de lead (API v4) e extração de identificadores.
 
-Especificação: docs/integracoes/KOMMO.md.
+Especificação: docs/integracoes/kommo.md.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from urllib.parse import parse_qs
 IDENTIFICADORES = ("gclid", "gbraid", "wbraid", "fbclid", "ctwa_clid", "meta_lead_id")
 
 _CHAVE = re.compile(r"^leads\[(status|add)\]\[(\d+)\]\[(\w+)\]$")
+_SUBDOMINIO = "account[subdomain]"
 
 
 @dataclass
@@ -24,7 +25,7 @@ class MudancaEtapa:
     status_id: int
     pipeline_id: int | None
     old_status_id: int | None = None
-    tipo: str = "status"  # status | add
+    tipo: str = "status"
     atualizado_em: int | None = None  # unix
 
 
@@ -45,18 +46,29 @@ def _achatar(obj, prefixo: str = "") -> list[tuple[str, str]]:
     return pares
 
 
+def _pares(corpo: str | bytes | dict) -> list[tuple[str, str]]:
+    if isinstance(corpo, bytes):
+        corpo = corpo.decode("utf-8")
+    if isinstance(corpo, str):
+        return [(k, v[0]) for k, v in parse_qs(corpo, keep_blank_values=True).items()]
+    return _achatar(corpo)
+
+
+def subdominio_do_webhook(corpo: str | bytes | dict) -> str | None:
+    """Conta Kommo que disparou o webhook (account[subdomain]), quando vier no corpo."""
+    for chave, valor in _pares(corpo):
+        if chave == _SUBDOMINIO and valor:
+            return valor
+    return None
+
+
 def parse_webhook(corpo: str | bytes | dict) -> list[MudancaEtapa]:
     """Lê o webhook do Kommo (lead criado e mudança de etapa).
 
     Aceita o POST form-urlencoded original ou o mesmo conteúdo já interpretado como dicionário,
     plano ({"leads[status][0][id]": "1"}) ou aninhado ({"leads": {"status": [{"id": "1"}]}}).
     """
-    if isinstance(corpo, bytes):
-        corpo = corpo.decode("utf-8")
-    if isinstance(corpo, str):
-        pares = [(k, v[0]) for k, v in parse_qs(corpo, keep_blank_values=True).items()]
-    else:
-        pares = _achatar(corpo)
+    pares = _pares(corpo)
     itens: dict[tuple[str, str], dict[str, str]] = {}
     for chave, valor in pares:
         m = _CHAVE.match(chave)
@@ -87,9 +99,11 @@ def parse_webhook(corpo: str | bytes | dict) -> list[MudancaEtapa]:
 @dataclass
 class DadosLead:
     lead_id: int
+    status_id: int | None = None  # etapa ATUAL no Kommo (confirma o webhook)
+    pipeline_id: int | None = None
     valor: float | None = None  # "venda" do lead no Kommo
     criado_em: int | None = None  # unix
-    ids: dict[str, str] = field(default_factory=dict)  # gclid, fbclid, ctwa_clid…
+    ids: dict[str, str] = field(default_factory=dict)
     utm: dict[str, str] = field(default_factory=dict)
     emails: list[str] = field(default_factory=list)
     telefones: list[str] = field(default_factory=list)
@@ -112,6 +126,8 @@ def extrair_dados_lead(lead: dict, contatos: list[dict], campos: dict[str, str])
     cfv = lead.get("custom_fields_values")
     dados = DadosLead(
         lead_id=int(lead["id"]),
+        status_id=lead.get("status_id"),
+        pipeline_id=lead.get("pipeline_id"),
         valor=float(lead["price"]) if lead.get("price") else None,
         criado_em=lead.get("created_at"),
     )
@@ -132,10 +148,11 @@ def extrair_dados_lead(lead: dict, contatos: list[dict], campos: dict[str, str])
 class KommoClient:
     """Cliente mínimo da API v4 (token de longa duração ou OAuth)."""
 
-    def __init__(self, subdominio: str, token: str, tentativas: int = 4):
+    def __init__(self, subdominio: str, token: str, tentativas: int = 3, timeout: float = 10):
         self.base = f"https://{subdominio}.kommo.com/api/v4"
         self.token = token
         self.tentativas = tentativas
+        self.timeout = timeout
 
     def _get(self, caminho: str) -> dict:
         req = urllib.request.Request(
@@ -143,7 +160,7 @@ class KommoClient:
         )
         for tentativa in range(self.tentativas):
             try:
-                with urllib.request.urlopen(req, timeout=20) as r:
+                with urllib.request.urlopen(req, timeout=self.timeout) as r:
                     return json.loads(r.read() or b"{}")
             except urllib.error.HTTPError as e:
                 if e.code not in (429, 500, 502, 503, 504) or tentativa == self.tentativas - 1:
@@ -158,8 +175,9 @@ class KommoClient:
         return self._get(f"/contacts/{contato_id}")
 
     def dados_lead(self, lead_id: int, campos: dict[str, str]) -> DadosLead:
+        """Lead + contato principal (no máximo 2 leituras, para caber no tempo de espera do n8n)."""
         lead = self.buscar_lead(lead_id)
-        contatos = [
-            self.buscar_contato(c["id"]) for c in (lead.get("_embedded") or {}).get("contacts", [])
-        ]
+        vinculados = (lead.get("_embedded") or {}).get("contacts", [])
+        principal = next((c for c in vinculados if c.get("is_main")), vinculados[0] if vinculados else None)
+        contatos = [self.buscar_contato(principal["id"])] if principal else []
         return extrair_dados_lead(lead, contatos, campos)

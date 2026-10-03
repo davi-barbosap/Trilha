@@ -10,7 +10,9 @@ from dataclasses import asdict
 from pydantic import ValidationError
 
 from trilha.core.economia import calcular
-from trilha.core.perfil import carregar_perfil
+from pathlib import Path
+
+from trilha.core.perfil import avisos_legado, carregar_perfil
 
 
 def _brl(v: float | None) -> str:
@@ -22,10 +24,15 @@ def _brl(v: float | None) -> str:
 def cmd_validar(args) -> int:
     perfil = carregar_perfil(args.perfil)
     print(f"OK — perfil de '{perfil.cliente.nome}' (versão {perfil.versao}, vigente desde {perfil.vigente_desde})")
+    for aviso in avisos_legado(args.perfil):
+        print(f"Atenção: {aviso}")
+    pasta = Path(args.perfil).resolve().parent.name
+    if pasta != perfil.cliente.id:
+        print(f"Atenção: cliente.id '{perfil.cliente.id}' difere da pasta '{pasta}' — a trilha-api vai recusar este perfil")
     if perfil.economia.estimados:
         print("Atenção: usando padrões do playbook (estimados) para: " + ", ".join(perfil.economia.estimados))
     if perfil.operacao is None:
-        print("Atenção: sem bloco operacao — os dossiês, pautas e pacotes de reunião não serão agendados")
+        print("Atenção: sem bloco operacao — dossiê, relatório semanal e pacote da reunião não serão agendados")
     print(f"Freio de emergência: {perfil.freio.modo} (gasto sem lead ≥ {perfil.freio.gasto_sem_lead_multiplo:g}× CPL máximo"
           f" ou {perfil.freio.horas_rastreamento_quebrado:g}h sem evento de conversão)")
     if perfil.crm and not perfil.crm.mapa_eventos:
