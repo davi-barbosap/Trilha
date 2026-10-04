@@ -124,6 +124,8 @@ def extrair_dados_lead(lead: dict, contatos: list[dict], campos: dict[str, str])
     """Extrai identificadores de clique, UTMs e contato de um lead da API v4.
 
     `campos` mapeia o nome padrão (gclid, fbclid…) para o nome/código/ID do campo personalizado na conta.
+    Cada campo é procurado primeiro no lead e, se vazio, no contato: há contas em que a integração
+    (ou o bot) grava origem e UTMs no contato.
     """
     cfv = lead.get("custom_fields_values")
     dados = DadosLead(
@@ -136,11 +138,15 @@ def extrair_dados_lead(lead: dict, contatos: list[dict], campos: dict[str, str])
     )
     for padrao, nome_na_conta in campos.items():
         valores = _valores_campo(cfv, nome_na_conta)
+        for contato in contatos:
+            if valores:
+                break
+            valores = _valores_campo(contato.get("custom_fields_values"), nome_na_conta)
         if not valores:
             continue
         if padrao in IDENTIFICADORES:
             dados.ids[padrao] = valores[0]
-        elif padrao.startswith("utm_") or padrao == "codigo_criativo":
+        elif padrao.startswith("utm_") or padrao in ("codigo_criativo", "origem"):
             dados.utm[padrao] = valores[0]
     motivos = (lead.get("_embedded") or {}).get("loss_reason") or []
     if motivos and motivos[0].get("name"):

@@ -5,9 +5,12 @@
 
 ## 1. Espaço padrão
 
+Segue a estrutura que a Trilha já usa (a mesma do briefing-trilha): um **espaço de clientes** com **uma pasta por cliente** e a lista padrão **"Operação"**. As listas abaixo são as que o sistema usa dentro da pasta de cada cliente; o ID do espaço vai em `CLICKUP_CLIENTS_SPACE_ID`.
+
 ```
-Espaço "Trilha"
+Espaço de clientes
 ├── Pasta por cliente
+│   ├── Lista "Operação"             ← lista padrão da equipe
 │   ├── Lista "Otimização semanal"   ← um dossiê por semana (W12)
 │   ├── Lista "Relatório semanal"    ← números da semana em três blocos (W07)
 │   ├── Lista "Briefings"            ← pacote de dados do briefing (W08)

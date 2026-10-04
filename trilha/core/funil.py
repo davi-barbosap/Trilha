@@ -11,11 +11,13 @@ O sistema mostra onde está o maior vazamento e quanto ele custa; a leitura é d
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from statistics import median
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from trilha.core.atribuicao import NAO_RASTREADO, eh_pago
 from trilha.core.perfil import ETAPAS_FUNIL, Etapa
 from trilha.core.playbook import Playbook
 
@@ -30,6 +32,16 @@ LADO_DA_ETAPA = {
 }
 ETAPAS_DO_MARKETING = ("lead", "lead_qualificado", "agendamento")
 AMOSTRA_MINIMA = 20
+AMOSTRA_MINIMA_SDR = 20  # leads, para o perfil por pessoa ser comparável
+AMOSTRA_MINIMA_CLOSER = 5  # comparecimentos
+DIAS_PARADO = 15
+# "Responsáveis" que são baldes do sistema, não pessoas.
+PSEUDO_RESPONSAVEIS = {"descarte", "sem corretor", "sem responsável", "(sem corretor)", "sem responsavel"}
+
+
+def semana_do_mes(d: datetime) -> str:
+    """Semanas fixas da Trilha: w1 = 1–7, w2 = 8–14, w3 = 15–21, w4 = 22 até o fim do mês."""
+    return "w1" if d.day <= 7 else "w2" if d.day <= 14 else "w3" if d.day <= 21 else "w4"
 
 
 class LeadFunil(BaseModel):
@@ -42,10 +54,18 @@ class LeadFunil(BaseModel):
     perdido_em: datetime | None = None
     motivo_perda: str | None = None
     tentativas_contato: int | None = None
-    responsavel: str | None = None
+    responsavel: str | None = None  # quem atende e qualifica (SDR, corretor)
+    closer: str | None = None  # quem conduz reunião, proposta e fechamento, quando é outra pessoa
+    pessoa: str | None = None  # chave da pessoa (hash do telefone) para deduplicar
+    canal: str | None = None  # canal canônico (atribuicao.normalizar_canal)
     campanha: str | None = None  # utm_campaign gravada no lead
     criativo: str | None = None  # utm_content gravada no lead
+    score: str | None = None  # lead score do CRM/bot (A, B, C…)
+    bot: Literal["concluido", "incompleto", "nao_iniciado"] | None = None
+    interagiu: bool | None = None  # houve mensagem humana e o lead respondeu depois
+    produto: str | None = None
     valor: float | None = None  # valor do negócio (VGV no imobiliário)
+    ultima_movimentacao: datetime | None = None
 
     def indice(self) -> int:
         """Etapa mais avançada alcançada (etapas puladas contam como passadas)."""
@@ -80,6 +100,39 @@ def _taxa(parte: int, todo: int) -> float | None:
     return round(parte / todo, 4) if todo else None
 
 
+def deduplicar(leads: list[LeadFunil]) -> tuple[list[LeadFunil], int, int]:
+    """Régua canônica da Trilha.
+
+    Lead: a mesma pessoa conta uma vez por mês de entrada (quem volta no mês seguinte
+    é uma nova entrada). Venda: mesma pessoa, mesmo dia, mesmo valor e mesmo produto
+    é o mesmo negócio cadastrado duas vezes; duas unidades no mesmo dia são duas vendas.
+    """
+    ordenados = sorted(leads, key=lambda l: l.etapas.get("lead") or min(l.etapas.values(), default=datetime.max.replace(tzinfo=timezone.utc)))
+    vistos, saida, leads_dup = set(), [], 0
+    for l in ordenados:
+        entrada = l.etapas.get("lead")
+        if l.pessoa and entrada:
+            chave = (l.pessoa, entrada.year, entrada.month)
+            if chave in vistos and not l.vendido():
+                leads_dup += 1
+                continue
+            vistos.add(chave)
+        saida.append(l)
+    vendas_vistas, vendas_dup = set(), 0
+    for l in saida:
+        if l.vendido() and l.pessoa:
+            chave = (l.pessoa, l.etapas["venda"].date(), l.valor, l.produto)
+            if chave in vendas_vistas:
+                l.etapas.pop("venda")
+                vendas_dup += 1
+            vendas_vistas.add(chave)
+    return saida, leads_dup, vendas_dup
+
+
+def _div(a: float | None, b: float | None) -> float | None:
+    return round(a / b, 2) if a and b else None
+
+
 def _resumo(leads: list[LeadFunil]) -> dict:
     vendidos = [l for l in leads if l.vendido()]
     return {
@@ -98,10 +151,16 @@ def raio_x(
     sla_primeiro_contato_min: float = 30,
     referencia: dict[str, float] | None = None,
     valor_medio_venda: float | None = None,
+    agora: datetime | None = None,
+    dias_parado: int = DIAS_PARADO,
 ) -> dict:
-    """Raio-x de um período. `referencia` (conversão por etapa) padrão: a do playbook."""
+    """Raio-x de um período (safra de leads). `referencia` (conversão por etapa) padrão: a do playbook."""
     referencia = referencia if referencia is not None else dict(playbook.taxas_referencia)
+    leads, leads_duplicados, vendas_duplicadas = deduplicar([l.model_copy(deep=True) for l in leads])
     n = len(leads)
+    # Investimento só paga mídia: custos dividem pelo que veio de Meta/Google. Sem canal informado, todos contam.
+    canal_informado = any(l.canal for l in leads)
+    pagos = [l for l in leads if eh_pago(l.canal)] if canal_informado else leads
 
     # 1. Etapa por etapa
     alcancaram = {e: [l for l in leads if l.alcancou(e)] for e in ETAPAS_FUNIL}
@@ -196,8 +255,8 @@ def raio_x(
         "qualificados": mkt["lead_qualificado"],
         "agendamentos": mkt["agendamento"],
         "taxa_qualificacao": _taxa(mkt["lead_qualificado"], mkt["lead"]),
-        "custo_por_qualificado": round(investimento / mkt["lead_qualificado"], 2) if investimento and mkt["lead_qualificado"] else None,
-        "custo_por_agendamento": round(investimento / mkt["agendamento"], 2) if investimento and mkt["agendamento"] else None,
+        "custo_por_qualificado": _div(investimento, sum(l.alcancou("lead_qualificado") for l in pagos)),
+        "custo_por_agendamento": _div(investimento, sum(l.alcancou("agendamento") for l in pagos)),
     }
     comercial = {
         "primeiro_contato_dentro_do_sla": primeiro_contato["dentro_do_sla"],
@@ -209,39 +268,115 @@ def raio_x(
         "perdas_comercial": perdas_categoria.get("comercial", 0),
     }
 
-    # 6. Resultado: venda e valor vendido; CPL é diagnóstico
+    # 6. Resultado: venda e valor vendido; CPL é diagnóstico.
+    # Custos dividem só pelo que veio de mídia paga (o investimento só paga isso). Como parte
+    # das vendas entra sem rastreio, o custo por venda é um teto e o retorno, um piso.
+    vendidos_pagos = [l for l in pagos if l.vendido()]
+    comparec_pagos = [l for l in pagos if l.alcancou("comparecimento")]
     valor_vendido = sum(l.valor or 0 for l in vendidos)
+    valor_pago = sum(l.valor or 0 for l in vendidos_pagos)
+
     resultado = {
         "investimento": investimento,
         "vendas": len(vendidos),
         "valor_vendido": valor_vendido,
-        "retorno_sobre_investimento": round(valor_vendido / investimento, 1) if investimento else None,
-        "custo_por_comparecimento": round(investimento / len(alcancaram["comparecimento"]), 2) if investimento and alcancaram["comparecimento"] else None,
-        "custo_por_venda": round(investimento / len(vendidos), 2) if investimento and vendidos else None,
-        "diagnostico_cpl": round(investimento / n, 2) if investimento and n else None,
+        "vendas_de_midia_paga": len(vendidos_pagos),
+        "vendas_nao_rastreadas": sum(1 for l in vendidos if canal_informado and (l.canal or NAO_RASTREADO) == NAO_RASTREADO),
+        "retorno_sobre_investimento": round(valor_pago / investimento, 1) if investimento else None,  # piso
+        "custo_por_comparecimento": _div(investimento, len(comparec_pagos)),
+        "custo_por_venda": _div(investimento, len(vendidos_pagos)),  # teto
+        "leads_de_midia_paga": len(pagos),
+        "diagnostico_cpl": _div(investimento, len(pagos)),
+        "custo_por_venda_e_teto_retorno_e_piso": canal_informado,
     }
 
-    # 7. Por responsável (time comercial do cliente) e por campanha (atribuição pelo Kommo)
-    por_responsavel = {}
-    grupos = defaultdict(list)
-    for l in leads:
-        grupos[l.responsavel or "sem responsável"].append(l)
-    for nome, ls in sorted(grupos.items()):
-        mins = [
+    # 7. Por pessoa do time do cliente (sem baldes do sistema), por canal, por campanha e por score
+    def _minutos(ls):
+        return [
             _horas(l.etapas["lead"], l.etapas["em_atendimento"]) * 60
             for l in ls if "lead" in l.etapas and "em_atendimento" in l.etapas
         ]
+
+    def _agrupar(chave):
+        grupos = defaultdict(list)
+        for l in leads:
+            grupos[chave(l)].append(l)
+        return sorted(grupos.items(), key=lambda x: str(x[0]))
+
+    por_responsavel = {}
+    for nome, ls in _agrupar(lambda l: l.responsavel or "sem responsável"):
+        if nome.strip().lower() in PSEUDO_RESPONSAVEIS:
+            continue
+        mins = _minutos(ls)
         por_responsavel[nome] = {
             **_resumo(ls),
             "mediana_minutos_primeiro_contato": _mediana(mins),
             "dentro_do_sla": _taxa(sum(m <= sla_primeiro_contato_min for m in mins), len(mins)),
+            "amostra_suficiente": len(ls) >= AMOSTRA_MINIMA_SDR,
         }
-    por_campanha = {}
-    grupos = defaultdict(list)
+    por_closer = {}
+    for nome, ls in _agrupar(lambda l: l.closer):
+        if not nome or nome.strip().lower() in PSEUDO_RESPONSAVEIS:
+            continue
+        comp = [l for l in ls if l.alcancou("comparecimento")]
+        vend = [l for l in ls if l.vendido()]
+        por_closer[nome] = {
+            "comparecimentos": len(comp),
+            "propostas": sum(l.alcancou("proposta") for l in ls),
+            "vendas": len(vend),
+            "valor_vendido": sum(l.valor or 0 for l in vend),
+            "comparecimento_para_venda": _taxa(len(vend), len(comp)),
+            "amostra_suficiente": len(comp) >= AMOSTRA_MINIMA_CLOSER,
+        }
+    por_canal = {nome: _resumo(ls) for nome, ls in _agrupar(lambda l: l.canal or NAO_RASTREADO)} if canal_informado else {}
+    por_campanha = {nome: _resumo(ls) for nome, ls in _agrupar(lambda l: l.campanha or "sem campanha")}
+    por_score = {nome: _resumo(ls) for nome, ls in _agrupar(lambda l: l.score) if nome} if any(l.score for l in leads) else {}
+
+    # 8. Leads parados: ativos (nem venda nem perda) sem movimentação há mais de N dias
+    agora = agora or datetime.now(timezone.utc)
+    parados = []
     for l in leads:
-        grupos[l.campanha or "sem campanha"].append(l)
-    for nome, ls in sorted(grupos.items()):
-        por_campanha[nome] = _resumo(ls)
+        if l.vendido() or l.perdido_em:
+            continue
+        ultima = l.ultima_movimentacao or max(l.etapas.values(), default=None)
+        if ultima and (agora - ultima) > timedelta(days=dias_parado):
+            parados.append({"lead_id": l.lead_id, "responsavel": l.responsavel, "etapa": playbook.rotulo(ETAPAS_FUNIL[l.indice()]),
+                            "dias_parado": (agora - ultima).days})
+    parados.sort(key=lambda p: -p["dias_parado"])
+
+    # 9. Pré-atendimento e resgate
+    com_bot = [l for l in leads if l.bot]
+    nao_qualificados = [l for l in leads if not l.alcancou("lead_qualificado") and l.interagiu is not None]
+    pre_atendimento = {
+        "bot_concluido": _taxa(sum(l.bot == "concluido" for l in com_bot), len(com_bot)),
+        "bot_nao_iniciado": _taxa(sum(l.bot == "nao_iniciado" for l in com_bot), len(com_bot)),
+        "nao_qualificados_que_interagiram": _taxa(sum(bool(l.interagiu) for l in nao_qualificados), len(nao_qualificados)),
+    }
+
+    # 10. Qualidade dos dados e sinais (regras fixas; a leitura é do assessor)
+    perdidos = [l for l in leads if l.perdido_em and not l.vendido()]
+    qualidade = {
+        "leads_duplicados_removidos": leads_duplicados,
+        "vendas_duplicadas_removidas": vendas_duplicadas,
+        "perdas_sem_motivo": _taxa(perdas_categoria.get("sem_motivo", 0), len(perdidos)),
+        "perdas_com_motivo_fora_da_lista": _taxa(perdas_categoria.get("nao_classificado", 0), len(perdidos)),
+        "leads_nao_rastreados": _taxa(sum((l.canal or NAO_RASTREADO) == NAO_RASTREADO for l in leads), n) if canal_informado else None,
+        "leads_sem_responsavel": _taxa(sum(not l.responsavel for l in leads), n),
+    }
+    sinais = []
+    perdidos_antes = [l for l in perdidos if not l.alcancou("lead_qualificado")]
+    atendimento_antes = sum(classificar_perda(l, playbook)[0] == "atendimento" for l in perdidos_antes)
+    if perdidos_antes and atendimento_antes / len(perdidos_antes) > 0.30:
+        sinais.append(f"{atendimento_antes / len(perdidos_antes):.0%} das perdas antes da qualificação são de atendimento "
+                      "(não respondeu, demora): resgatar a base antes de aumentar volume")
+    if (qualidade["perdas_sem_motivo"] or 0) > 0.20:
+        sinais.append("mais de 20% das perdas sem motivo: tornar o motivo obrigatório no Kommo")
+    if (qualidade["leads_nao_rastreados"] or 0) > 0.20:
+        sinais.append("mais de 20% dos leads sem canal: revisar UTMs e campo de origem")
+    if criterio_a_revisar:
+        sinais.append(f"{criterio_a_revisar} qualificados perdidos por motivo de lead: revisar o critério de qualificação")
+    if parados:
+        sinais.append(f"{len(parados)} leads ativos parados há mais de {dias_parado} dias")
 
     return {
         "leads": n,
@@ -255,5 +390,12 @@ def raio_x(
         "comercial_converteu": comercial,
         "resultado": resultado,
         "por_responsavel": por_responsavel,
+        "por_closer": por_closer,
+        "por_canal": por_canal,
         "por_campanha": por_campanha,
+        "por_score": por_score,
+        "parados": parados,
+        "pre_atendimento": pre_atendimento,
+        "qualidade_dos_dados": qualidade,
+        "sinais": sinais,
     }

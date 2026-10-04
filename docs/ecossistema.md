@@ -38,6 +38,19 @@ O Trilha não constrói essas ferramentas, mas depende do que elas gravam. Sem i
 
 Mudou uma etapa no Kommo, um campo oculto da página ou o fluxo do BotConversa? Avisar quem cuida do Trilha: o mapa de eventos e o W01 precisam acompanhar.
 
+### Ferramentas paralelas que já existem
+
+| Ferramenta (repositório) | Relação com este sistema |
+|---|---|
+| Painéis de mensuração por cliente (`mensuracao-ibr`, `mensuracao-mme`, `maia-dash`, `ni-report`, `*-report`) | camada de relatório publicada para o cliente; devem seguir o mesmo [dicionário de métricas](metricas.md) para os números baterem |
+| Painel de saúde da carteira (`trilha-painel`) | mesma função do painel da carteira; as regras de saúde das contas foram trazidas para cá (`saude.py`) |
+| Ranking de corretores (`ranking-corretores-lion`) | painel de TV para o cliente; usa as mesmas ideias de leads parados e perfil comparativo |
+| Rotinas de tags no Kommo (estado do bot, `Interagiu`) | automação de CRM; o raio-x lê as tags |
+| Landing pages (`bossa-site`) | cumprem o contrato de rastreamento: first-touch por sessão, esquema fixo no payload |
+| Briefing (`briefing-trilha`) | onboarding da oferta e fluxos do Kommo ([ADR-005](decisoes/005-dependencia-briefing-trilha.md)) |
+
+Origem detalhada de cada padrão: [origem dos padrões](origem-dos-padroes.md).
+
 ## 4. Time comercial do cliente ≠ assessor
 
 O sistema **mede** o time comercial do cliente (corretores, atendentes) atendendo os leads: primeiro contato, cadência, conversão. Isso é o raio-x do funil. O sistema **não mede** o contato do assessor com o cliente (contatos proativos, respostas no grupo).

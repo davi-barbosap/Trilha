@@ -67,7 +67,21 @@ crm:
     motivo_perda: "motivo_perda"        # só se a conta não usar os motivos de perda nativos
 ```
 
-## 3.1 Funil padrão no Kommo (todo cliente, qualquer segmento)
+## 3.1 Vários funis
+
+```yaml
+crm:
+  funis:
+    - { pipeline_id: 1110, nome: SDR, papel: entrada, ganho_significa: comparecimento }
+    - { pipeline_id: 1111, nome: Closer, papel: fechamento }        # 142 = venda
+    - { pipeline_id: 1112, nome: Nutrição, papel: nutricao }        # 142 = venda
+    - { pipeline_id: 1113, nome: Base importada, papel: base }      # fora de leads e CPL
+    - { pipeline_id: 1114, nome: Teste, papel: ignorar }
+```
+
+O "ganho" (142) só é venda nos funis de fechamento e nutrição. Num funil de entrada ele precisa de `ganho_significa`; sem isso, não gera evento. Funil não cadastrado em `funis` também não gera evento. Conta com um funil só pode deixar `funis` vazio (142 = venda, 143 = perdido).
+
+## 3.2 Funil padrão no Kommo (todo cliente, qualquer segmento)
 
 | Ordem | Etapa (nome pode seguir o segmento) | Evento |
 |---|---|---|
@@ -84,6 +98,17 @@ crm:
 - **Responsável:** todo lead com responsável (corretor/atendente). O raio-x sai também por responsável.
 - **Contatos registrados:** mensagens e ligações feitas pelo Kommo, para medir a cadência (tentativas de contato por lead).
 - **Histórico de etapas:** a coleta diária (W02) lê, pela API de eventos do Kommo, quando cada lead entrou em cada etapa e as tentativas de contato, e monta o histórico que o raio-x usa. Conferir na conta do cliente quais tipos de evento de contato estão disponíveis.
+- **Origem no contato:** em algumas contas a integração ou o bot gravam origem e UTMs no **contato**. A leitura procura primeiro no lead e, se vazio, no contato.
+- **Tags lidas pelo raio-x:** estado do bot (`bot-não-iniciado`, `bot-incompleto`, `bot-concluído`), `Interagiu` (resgate humano) e tags de reunião. As rotinas que aplicam essas tags rodam fora deste sistema.
+
+## 3.3 Regras da coleta (W02)
+
+Padrões dos coletores de mensuração da Trilha:
+- **Vendas pela data de fechamento:** buscar também os leads do funil de fechamento com `closed_at` no período (não só os criados no período), e unir sem repetir.
+- **Falhar alto:** credencial recusada (401/403), 429 ou 5xx interrompem a coleta. Nunca publicar "zero leads" por causa de token expirado; os últimos dados bons continuam valendo, com a data da coleta visível.
+- **Paginação até o fim** (250 por página) e campos lidos por ID com fallback pelo nome (campo recriado muda de ID).
+- **Base importada** entra só como contagem por etapa, não lead a lead.
+- **Dados pessoais:** telefone e e-mail viram chave (hash) para deduplicar; nada sai em claro da trilha-api.
 
 ## 4. Campos personalizados padrão (criar em todo cliente)
 

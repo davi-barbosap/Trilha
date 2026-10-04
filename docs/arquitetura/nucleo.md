@@ -3,7 +3,7 @@
 > **Escopo:** [ecossistema](../ecossistema.md) · **Quem faz o quê:** [modelo operacional](../modelo-operacional.md) — ambos prevalecem sobre este documento em caso de conflito.
 > Este documento reúne tudo o que é **comum a todas as plataformas**: estratégia, onboarding, perfil do cliente, brand kit, playbooks de segmento, conversão real, motores estatísticos, governança.
 > Módulos específicos: [Meta Ads](meta-ads.md) · [Google Ads](google-ads.md)
-> Status de implantação: [roadmap](../roadmap.md) · Decisões: [`docs/decisoes/`](../decisoes/) · Integrações: [`docs/integracoes/`](../integracoes/)
+> Status de implantação: [roadmap](../roadmap.md) · Métricas: [dicionário](../metricas.md) · Decisões: [`docs/decisoes/`](../decisoes/) · Integrações: [`docs/integracoes/`](../integracoes/)
 > Fonte do modelo de briefing de oferta e do playbook imobiliário: [`briefing-trilha`](https://github.com/beatriz-moraes082/briefing-trilha) — dependência formalizada em [ADR-005](../decisoes/005-dependencia-briefing-trilha.md).
 
 ## 1. Princípios
@@ -344,7 +344,7 @@ Especificação técnica completa: [Kommo](../integracoes/kommo.md). Código: `t
 
 ### 7.2 Mapa de eventos de qualidade
 
-As etapas do funil Kommo seguem o **funil padrão da Trilha**, igual para todos os segmentos ([raio-x do funil](../raio-x-do-funil.md), [ADR-008](../decisoes/008-funil-padrao.md)). **Os IDs de funil e de etapa mudam em cada conta Kommo**, então o mapa vive no `perfil.yaml` de cada cliente (`crm.mapa_eventos`); apenas as etapas de sistema do Kommo são fixas (142 = venda ganha, 143 = perdida) e entram como padrão.
+Cada funil do Kommo tem um papel (`crm.funis`: entrada, fechamento, nutrição, base, ignorar); o "ganho" (142) só é venda no fechamento e na nutrição ([Kommo](../integracoes/kommo.md) §3.1). As etapas seguem o **funil padrão da Trilha**, igual para todos os segmentos ([raio-x do funil](../raio-x-do-funil.md), [ADR-008](../decisoes/008-funil-padrao.md)). **Os IDs de funil e de etapa mudam em cada conta Kommo**, então o mapa vive no `perfil.yaml` de cada cliente (`crm.mapa_eventos`); apenas as etapas de sistema do Kommo são fixas (142 = venda ganha, 143 = perdida) e entram como padrão.
 
 | Etapa no Kommo (nome do imobiliário) | Evento padrão | Retorno à plataforma |
 |---|---|---|
@@ -380,6 +380,7 @@ Portais (imobiliário), indicação, orgânico e lista própria entram no CRM co
 
 | Motor | O que faz | Detalhes de plataforma |
 |---|---|---|
+| **Saúde das contas** | status da conta, dias de saldo pré-pago pela queima de 7 dias, recarga de 30 dias; alertas P1/P2 com ação e responsável | `trilha/core/saude.py`, painel da carteira |
 | **Raio-x do funil** | etapa por etapa, primeiro contato, cadência, perdas por categoria, maior vazamento, marketing entregou × comercial converteu, atribuição pelo Kommo | [raio-x do funil](../raio-x-do-funil.md) |
 | Relatórios | pontual, histórico, MTD com metas da versão vigente do perfil | em cada documento de plataforma |
 | Anomalias | contas e campanhas, boas e más | §9 |
@@ -475,6 +476,8 @@ Testes sem volume para atingir a amostra mínima não são abertos — o sistema
 
 **Canais de entrega:** urgências, freio e leitura diária vão para o Slack da operação; dossiês, relatórios e pacotes chegam como tarefas no ClickUp. **Nada sai do sistema direto para o cliente.**
 
+**Definições:** [dicionário de métricas da Trilha](../metricas.md) (lead, qualificado, reunião, oportunidade, venda, CPL, CPO, CAC teto, ROAS piso, deduplicação, semanas w1–w4).
+
 **Hierarquia de métricas por cliente:** resultado (vendas, valor vendido — VGV no imobiliário —, retorno sobre o investimento, custo por venda e por comparecimento) → métrica principal da plataforma (custo por lead qualificado, ROAS) → diagnóstico (CPL, CPM, CTR, retenção de vídeo). Relatórios nunca apresentam métrica de diagnóstico como resultado.
 
 ## 12. Estrutura do repositório
@@ -486,14 +489,14 @@ Legenda: ✅ existe · ⬜ previsto no [roadmap](../roadmap.md).
 ├── README.md
 ├── pyproject.toml · .env.example · .gitignore · .github/workflows/testes.yml
 ├── docs/
-│   ├── ecossistema.md · modelo-operacional.md · raio-x-do-funil.md · roadmap.md
+│   ├── ecossistema.md · modelo-operacional.md · raio-x-do-funil.md · metricas.md · origem-dos-padroes.md · roadmap.md
 │   ├── arquitetura/           ✅ nucleo.md · meta-ads.md · google-ads.md
 │   ├── decisoes/              ✅ ADRs 001–008
 │   └── integracoes/           ✅ n8n.md · kommo.md · clickup.md · ferramentas.md
 ├── trilha/                    pacote Python = trilha-api
 │   ├── api.py                 ✅ HTTP para o n8n
 │   ├── __main__.py            ✅ CLI: validar · calcular · raio-x · simular-webhook · servir
-│   ├── core/                  ✅ perfil.py · oferta.py · playbook.py · economia.py · funil.py · freio.py
+│   ├── core/                  ✅ perfil.py · oferta.py · playbook.py · economia.py · funil.py · atribuicao.py · freio.py · saude.py
 │   │                          ⬜ materiais (dossiê, relatório, briefing, reunião, painel)
 │   ├── conversao/             ✅ hash.py · pipeline.py
 │   ├── integracoes/           ✅ kommo.py · ⬜ clickup.py

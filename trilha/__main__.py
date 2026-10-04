@@ -104,10 +104,27 @@ def cmd_raio_x(args) -> int:
     print("\nPerdas por categoria: " + " · ".join(f"{k}: {v}" for k, v in sorted(p["por_categoria"].items(), key=lambda x: -x[1])))
     if p["qualificados_perdidos_por_motivo_de_lead"]:
         print(f"  {p['qualificados_perdidos_por_motivo_de_lead']} leads qualificados foram perdidos por motivo de lead: critério de qualificação a revisar")
+    if r["sinais"]:
+        print("\nSinais:")
+        for sinal in r["sinais"]:
+            print(f"  • {sinal}")
+    q = r["qualidade_dos_dados"]
+    if q["leads_duplicados_removidos"] or q["vendas_duplicadas_removidas"]:
+        print(f"\nDeduplicação: {q['leads_duplicados_removidos']} lead(s) e {q['vendas_duplicadas_removidas']} venda(s) repetidos removidos")
+    if res["custo_por_venda_e_teto_retorno_e_piso"]:
+        print(f"Custos sobre {res['leads_de_midia_paga']} leads de mídia paga; {res['vendas_nao_rastreadas']} venda(s) sem rastreio:"
+              " custo por venda é teto e retorno é piso")
     print("\nPor responsável:")
     for nome, d in r["por_responsavel"].items():
         print(f"  {nome:<14} {d['leads']:>4} leads · primeiro contato {_num(d['mediana_minutos_primeiro_contato'])} min ({_pct(d['dentro_do_sla'])} no prazo)"
               f" · {d['vendas']} vendas")
+        if not d["amostra_suficiente"]:
+            print("                 (amostra pequena para comparar)")
+    if r["por_closer"]:
+        print("\nPor closer:")
+        for nome, d in r["por_closer"].items():
+            print(f"  {nome:<14} {d['comparecimentos']:>4} comparecimentos · {d['propostas']} propostas · {d['vendas']} vendas"
+                  f" ({_pct(d['comparecimento_para_venda'])})")
     return 0
 
 

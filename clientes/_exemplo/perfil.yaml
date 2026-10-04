@@ -40,6 +40,13 @@ crm:
   tipo: kommo
   subdominio: imobiliaria-exemplo
   sla_primeiro_contato_min: 30    # do time comercial do cliente com o lead
+  # Papel de cada funil do Kommo. O "ganho" (142) muda de sentido: no Closer é venda, no SDR costuma ser
+  # reunião realizada. Conta com SDR + Closer:
+  #   - { pipeline_id: 1110, nome: SDR, papel: entrada, ganho_significa: comparecimento }
+  #   - { pipeline_id: 1111, nome: Closer, papel: fechamento }
+  #   - { pipeline_id: 1112, nome: Base importada, papel: base }   # fora de leads e CPL
+  funis:
+    - { pipeline_id: 1111, nome: Vendas, papel: fechamento }
   mapa_eventos:                   # etapas padrão da Trilha (docs/raio-x-do-funil.md); 142 e 143 já são padrão
     - { pipeline_id: 1111, status_id: 2222, evento: lead }
     - { pipeline_id: 1111, status_id: 2223, evento: em_atendimento }
@@ -58,6 +65,7 @@ crm:
     utm_campaign: utm_campaign
     utm_content: utm_content
     codigo_criativo: codigo_criativo
+    origem: Origem                # canal (Meta Ads, Google Ads, Não rastreado…); lido do lead ou do contato
     motivo_perda: motivo_perda    # só se a conta não usar os motivos de perda nativos do Kommo
 
 conversao:

@@ -13,20 +13,21 @@ O sistema entra em operação num cliente piloto, é testado na prática e depoi
 - ✅ Calculadora de economia unitária (CAC, CPL e CPL qualificado máximos, verba por degrau)
 - ✅ Leitura do Kommo com confirmação da etapa real do lead
 - ✅ Conversões para o Meta (API de Conversões v26.0) e para o Google (Data Manager API), com hash e deduplicação
-- ✅ Regras do freio de emergência
-- ✅ trilha-api: `/saude`, `/clientes`, `/validar`, `/calcular`, `/conversao`, `/freio/avaliar`, `/funil/raio-x`, com segredo de webhook por cliente
+- ✅ Regras do freio de emergência e da saúde das contas (status, dias de saldo, recarga)
+- ✅ Régua de métricas da Trilha ([métricas](metricas.md)): vários funis com o papel de cada um, deduplicação de leads e vendas, canal normalizado, custos sobre mídia paga (teto/piso), SDR × closer, leads parados, sinais
+- ✅ trilha-api: `/saude`, `/clientes`, `/validar`, `/calcular`, `/conversao`, `/freio/avaliar`, `/funil/raio-x`, `/contas/saude`, com segredo de webhook por cliente
 - ✅ Fluxos-modelo do n8n: W01 (conversão real) e W10 (vigia de falhas)
 - ✅ Infraestrutura descrita em `infra/` (n8n 2.x, Postgres, Redis, trilha-api, HTTPS, backup)
-- ✅ 62 testes e verificação automática no GitHub
+- ✅ 77 testes e verificação automática no GitHub
 
 ## Para entrar em operação
 
 | # | Item | Material que passa a ficar pronto | Pronto quando | Status |
 |---|---|---|---|---|
 | 1 | **Servidor autohospedado** do n8n + **W10** vigia de falhas | — (base) | `/saude` responde; uma falha forçada chega no Slack; um backup é restaurado | 🟡 tudo escrito; falta o servidor |
-| 2 | **Kommo do piloto no padrão** (funil padrão, motivos de perda nativos obrigatórios, responsável, campos de rastreamento) + **W01** conversão real (Meta) | todos | `lead_qualificado` aparece no Gerenciador de Eventos, primeiro com `META_TEST_EVENT_CODE`, depois em produção | 🟡 falta configurar o Kommo do piloto e importar o W01 |
+| 2 | **Kommo do piloto no padrão** (funis cadastrados com papel, funil padrão, motivos de perda nativos obrigatórios, responsável, campos de rastreamento) + **W01** conversão real (Meta) | todos | `lead_qualificado` aparece no Gerenciador de Eventos, primeiro com `META_TEST_EVENT_CODE`, depois em produção | 🟡 falta configurar o Kommo do piloto e importar o W01 |
 | 3 | Envio ao Google (Data Manager API) + **W02** coleta diária, incluindo o **histórico de etapas e tentativas de contato do Kommo** que alimenta o raio-x | dossiê, relatório | `validateOnly` aceito, depois envio real; raio-x do piloto gerado com dados reais às 05:30 | 🟡 payload e cálculo do raio-x prontos; falta a coleta |
-| 4 | **W03** urgências + freio, **W04** pacing, **W05** leitura diária | monitoramento | uma pausa de teste com aviso e desfazer; leitura diária no Slack às 07:30 | 🟡 regra do freio pronta |
+| 4 | **W03** urgências + freio + saúde das contas, **W04** pacing, **W05** leitura diária | monitoramento | uma pausa de teste com aviso e desfazer; leitura diária no Slack às 07:30 | 🟡 regra do freio pronta |
 | 5 | **W12** dossiê de otimização (com o raio-x da semana) + histórico de alterações | otimização semanal | o assessor faz a sessão do piloto só com o dossiê | ⬜ |
 | 6 | **W06** execução do aprovado (ClickUp) | otimização semanal | uma mudança aprovada é executada e desfeita em teste | ⬜ |
 | 7 | **W07** números do relatório semanal | relatório semanal | relatório do piloto na véspera, com marketing entregou × comercial converteu, perdas por categoria, criativos e ações | ⬜ |
@@ -45,7 +46,8 @@ Sem prazo. Cada item entra quando a operação mostrar que vale a pena.
 - Painel MTD no Looker Studio e calendário sazonal.
 - Verificador de copy dos anúncios.
 - Estatística avançada (quando algum cliente tiver 20+ conversões por dia) e vencedores por argumento.
-- Novos segmentos e plataformas (TikTok, LinkedIn).
+- Novos segmentos e plataformas (TikTok, LinkedIn). A carteira já tem automotivo e hotelaria: playbooks desses segmentos a partir dos relatórios de cada cliente.
+- Alinhar os painéis de mensuração por cliente ao [dicionário de métricas](metricas.md) e, depois, fazê-los ler os dados do sistema.
 
 ## Em paralelo (fora deste repositório)
 

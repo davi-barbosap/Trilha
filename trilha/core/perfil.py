@@ -117,23 +117,62 @@ class MapaEvento(_Base):
     evento: Evento
 
 
+class Funil(_Base):
+    """Um funil (pipeline) do Kommo e o papel dele na operação.
+
+    O status 142 ("ganho") muda de sentido conforme o funil: no Closer é venda; no SDR
+    costuma ser "reunião realizada". Por isso o significado vem do papel do funil.
+    """
+
+    pipeline_id: int
+    nome: str = ""
+    # entrada: onde o lead nasce (SDR) · fechamento: onde a venda acontece (Closer)
+    # nutricao: leads em nutrição · base: trabalho sobre base importada · ignorar: teste
+    papel: Literal["entrada", "fechamento", "nutricao", "base", "ignorar"]
+    ganho_significa: Evento | None = None  # obrigatório para o 142 contar em funil de entrada
+
+    @model_validator(mode="after")
+    def _ganho(self) -> Funil:
+        if self.papel in ("fechamento", "nutricao") and self.ganho_significa is None:
+            self.ganho_significa = "venda"
+        return self
+
+
 class Crm(_Base):
     tipo: Literal["kommo"] = "kommo"
     subdominio: str
+    funis: list[Funil] = Field(default_factory=list)  # vazio = conta com um funil só
     mapa_eventos: list[MapaEvento] = Field(default_factory=list)
     campos: dict[str, str] = Field(default_factory=dict)
     sla_primeiro_contato_min: Positivo = 30  # do time comercial do cliente com o lead
 
+    def funil(self, pipeline_id: int | None) -> Funil | None:
+        return next((f for f in self.funis if f.pipeline_id == pipeline_id), None)
+
     def mapa_completo(self) -> list[MapaEvento]:
-        """Mapa do cliente + padrões das etapas de sistema do Kommo (o do cliente tem prioridade)."""
+        """Mapa do cliente + etapas de sistema do Kommo (142 e 143), resolvidas pelo papel de cada funil."""
         mapa = list(self.mapa_eventos)
-        configurados = {m.status_id for m in mapa}
-        for status, evento in ((KOMMO_STATUS_GANHO, "venda"), (KOMMO_STATUS_PERDIDO, "perdido")):
-            if status not in configurados:
-                mapa.append(MapaEvento(status_id=status, evento=evento))
+        configurados = {(m.pipeline_id, m.status_id) for m in mapa}
+        if not self.funis:
+            for status, evento in ((KOMMO_STATUS_GANHO, "venda"), (KOMMO_STATUS_PERDIDO, "perdido")):
+                if not any(s == status for _, s in configurados):
+                    mapa.append(MapaEvento(status_id=status, evento=evento))
+            return mapa
+        for f in self.funis:
+            if f.papel in ("base", "ignorar"):
+                continue
+            if f.ganho_significa and (f.pipeline_id, KOMMO_STATUS_GANHO) not in configurados:
+                mapa.append(MapaEvento(pipeline_id=f.pipeline_id, status_id=KOMMO_STATUS_GANHO, evento=f.ganho_significa))
+            if (f.pipeline_id, KOMMO_STATUS_PERDIDO) not in configurados:
+                mapa.append(MapaEvento(pipeline_id=f.pipeline_id, status_id=KOMMO_STATUS_PERDIDO, evento="perdido"))
         return mapa
 
     def evento_para(self, status_id: int, pipeline_id: int | None) -> Evento | None:
+        f = self.funil(pipeline_id)
+        if f is not None and f.papel in ("base", "ignorar"):
+            return None
+        if self.funis and f is None:
+            return None  # funil não cadastrado: na dúvida, não gera evento
         for m in self.mapa_completo():
             if m.status_id == status_id and (m.pipeline_id is None or m.pipeline_id == pipeline_id):
                 return m.evento

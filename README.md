@@ -17,10 +17,10 @@ Por isso o Trilha mede **o funil inteiro, etapa por etapa**, e trata **venda e v
 ## O que faz na prática
 
 **Todos os dias, sozinho**
-- **Raio-x do funil.** Para cada cliente, mostra quantos leads passaram por cada etapa (novo lead → em atendimento → qualificado → agendado → compareceu → proposta → venda), quanto tempo o time comercial do cliente leva para o primeiro contato, quantas tentativas faz antes de desistir, onde e por que os leads são perdidos — separando perda por qualidade do lead, por atendimento, comercial ou externa — e **qual etapa está vazando mais vendas e quanto isso custa em R$**. Mostra lado a lado o que o **marketing entregou** e o que o **comercial converteu**. Vale para qualquer segmento; o imobiliário só muda os nomes (visita agendada, visita realizada).
+- **Raio-x do funil.** Para cada cliente, mostra quantos leads passaram por cada etapa (novo lead → em atendimento → qualificado → agendado → compareceu → proposta → venda), quanto tempo o time comercial do cliente leva para o primeiro contato, quantas tentativas faz antes de desistir, onde e por que os leads são perdidos — separando perda por qualidade do lead, por atendimento, comercial ou externa — e **qual etapa está vazando mais vendas e quanto isso custa em R$**. Mostra lado a lado o que o **marketing entregou** e o que o **comercial converteu**, separa SDR e closer, aponta leads parados há mais de 15 dias e segue a régua de métricas da Trilha (a mesma pessoa conta uma vez por mês, CPL só sobre mídia paga, custo por venda como teto e retorno como piso). Entende operações com vários funis no Kommo (SDR, Closer, Nutrição), em que o "ganho" de um funil não é venda. Vale para qualquer segmento; o imobiliário só muda os nomes (visita agendada, visita realizada).
 - **Devolve a venda real para o Meta e o Google.** Quando o lead muda de etapa no Kommo (qualificado, visita, venda), o sistema avisa as plataformas. Assim elas aprendem a buscar gente parecida com quem compra, não só com quem clica.
 - **Coleta e confere os números** de Meta, Google e Kommo, e acompanha se a verba do mês vai sobrar ou faltar.
-- **Avisa só o que é urgente:** anúncio reprovado, campanha parada, rastreamento quebrado.
+- **Avisa só o que é urgente:** anúncio reprovado, campanha parada, rastreamento quebrado, conta de anúncio desativada ou com saldo pré-pago para menos de 5 dias (com a recarga sugerida).
 - **Freio de emergência:** se uma campanha está gastando sem trazer nenhum lead, ou com o rastreamento quebrado, pausa e avisa na hora, com um botão para desfazer. É a única coisa que o sistema faz sem pedir. Reativar é sempre decisão do assessor.
 
 **Na véspera de cada compromisso do assessor, deixa o material pronto no ClickUp**
@@ -66,6 +66,8 @@ A base de código está pronta e testada: ficha validada de cada cliente e de ca
 | [docs/ecossistema.md](docs/ecossistema.md) | O que é do sistema, do assessor e das ferramentas paralelas — e o que as paralelas precisam entregar |
 | [docs/modelo-operacional.md](docs/modelo-operacional.md) | O cargo de assessor item por item, o material de cada compromisso, capacidade, freio |
 | [docs/raio-x-do-funil.md](docs/raio-x-do-funil.md) | Funil padrão, perdas por categoria, maior vazamento, marketing × comercial, padrão no Kommo |
+| [docs/metricas.md](docs/metricas.md) | Dicionário de métricas da Trilha: definição e fórmula de cada número |
+| [docs/origem-dos-padroes.md](docs/origem-dos-padroes.md) | De que repositório da operação veio cada padrão |
 | [docs/roadmap.md](docs/roadmap.md) | O que está pronto e o que falta para entrar em operação |
 | [docs/arquitetura/](docs/arquitetura/) | Núcleo, Meta Ads e Google Ads |
 | [docs/integracoes/](docs/integracoes/) | n8n, Kommo, ClickUp e demais ferramentas |

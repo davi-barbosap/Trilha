@@ -136,6 +136,13 @@ class TestApi(unittest.TestCase):
         status, r = chamar(self.app, "POST", "/validar", {"cliente_id": "_exemplo"})
         self.assertEqual(r["ofertas"][0]["aderencia_pendente"], [])
 
+    def test_saude_das_contas(self):
+        status, r = chamar(self.app, "POST", "/contas/saude", {"cliente_id": "_exemplo", "contas": [
+            {"nome": "Conta principal", "saldo": 280, "gasto_7d": 700}]})
+        self.assertEqual((status, r["saude"]), (200, "vermelho"))
+        self.assertEqual(r["alertas"][0]["responsavel"], "Assessor responsável")
+        self.assertEqual(chamar(self.app, "POST", "/contas/saude", {"cliente_id": "_exemplo", "contas": [{"saldo": -1}]})[0], 400)
+
     def test_rota_inexistente(self):
         self.assertEqual(chamar(self.app, "GET", "/nada")[0], 404)
 

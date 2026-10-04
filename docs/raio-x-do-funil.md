@@ -1,7 +1,7 @@
 # Raio-x do funil
 
 > Código: `trilha/core/funil.py`, `trilha/core/playbook.py` · CLI: `python -m trilha raio-x` · API: `POST /funil/raio-x`
-> Decisão: [ADR-008](decisoes/008-funil-padrao.md)
+> Decisão: [ADR-008](decisoes/008-funil-padrao.md) · Definições: [dicionário de métricas](metricas.md)
 
 ## Por que existe
 
@@ -31,6 +31,10 @@ Outros segmentos usam os mesmos códigos com seus nomes: em educação, "aula ex
 
 Etapas puladas contam como passadas: um lead que foi de "qualificado" direto para "venda" conta em todas as etapas entre as duas.
 
+### Vários funis no Kommo
+
+Operações reais usam mais de um funil: **SDR** (entrada), **Closer** (fechamento), **Nutrição**, **base importada** e **teste**. Cada um é cadastrado em `crm.funis` com seu papel. O "ganho" (142) muda de sentido: no Closer é venda; no SDR costuma ser reunião realizada (`ganho_significa: comparecimento`). Base e teste não geram evento nem entram em leads e CPL. Funil não cadastrado não gera evento.
+
 ## O que o raio-x mostra
 
 | Bloco | Conteúdo |
@@ -42,8 +46,13 @@ Etapas puladas contam como passadas: um lead que foi de "qualificado" direto par
 | **Maior vazamento** | a passagem abaixo da referência que mais custa vendas, com o valor em R$ |
 | **Marketing entregou × comercial converteu** | leads, qualificados e agendamentos com custo de cada um × prazo de primeiro contato, comparecimento, propostas, vendas e perdas de atendimento e comerciais |
 | **Resultado** | vendas, valor vendido (VGV no imobiliário), retorno sobre o investimento, custo por comparecimento, custo por venda; o CPL aparece só como diagnóstico |
-| **Por responsável** | o mesmo raio-x por corretor/atendente do time do cliente |
-| **Por campanha** | leads, qualificados, comparecimentos, vendas e valor por campanha, atribuídos pelo Kommo |
+| **Por responsável** | o mesmo raio-x por SDR/corretor do time do cliente; baldes do sistema ("DESCARTE", "sem corretor") ficam fora; quem tem menos de 20 leads é marcado como amostra pequena |
+| **Por closer** | comparecimentos → propostas → vendas, quando o fechamento é de outra pessoa (amostra mínima: 5 reuniões) |
+| **Por canal, campanha e score** | leads, qualificados, comparecimentos, vendas e valor, atribuídos pelo Kommo; canal "Não rastreado" à parte; funil por lead score (A, B, C…) |
+| **Pré-atendimento** | % que concluiu o bot, % que nem iniciou, % dos não qualificados que interagiram com um humano |
+| **Leads parados** | leads ativos sem movimentação há mais de 15 dias, por responsável |
+| **Qualidade dos dados** | leads e vendas duplicados removidos, perdas sem motivo, motivos fora da lista, leads não rastreados, leads sem responsável |
+| **Sinais** | regras fixas: perdas de atendimento acima de 30% antes da qualificação → resgatar a base antes de aumentar volume; mais de 20% das perdas sem motivo; mais de 20% sem canal; qualificados perdidos por motivo de lead; leads parados |
 
 ## Perdas: de quem é
 
@@ -72,6 +81,8 @@ A referência vem do playbook do segmento. Segmento sem referência compara com 
 ## Resultado é venda
 
 - **Resultado:** vendas, valor vendido, retorno sobre o investimento, custo por comparecimento, custo por venda.
+- **Custos sobre mídia paga:** investimento ÷ o que veio de Meta e Google. Como parte das vendas entra sem rastreio, o custo por venda é um **teto** e o retorno é um **piso**.
+- **Deduplicação:** a mesma pessoa conta uma vez por mês de entrada; mesma pessoa, mesmo dia, mesmo valor e mesmo produto é a mesma venda.
 - **Diagnóstico:** CPL, CTR, CPM. CPL baixo com lead que não fecha é prejuízo disfarçado de eficiência.
 - No imobiliário, o valor vendido é o **VGV** (valor do negócio no Kommo). A comissão continua sendo a base das metas (`modelo_receita`) e do valor enviado às plataformas.
 

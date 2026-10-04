@@ -56,7 +56,7 @@ Responsabilidades e indicadores do cargo de Assessor de Marketing, e o que o sis
 
 | Bloco | Números |
 |---|---|
-| **Leads** | dois lados, explícitos: **marketing entregou** (leads, qualificados, agendamentos e custo de cada um) e **comercial converteu** (prazo de primeiro contato, comparecimento, propostas, vendas, valor vendido); perdas por etapa e por categoria (lead, atendimento, comercial, externo); maior vazamento; comparação com a semana anterior e com a meta |
+| **Leads** | semana atual contra a anterior (semanas da Trilha: w1 = 1–7, w2 = 8–14, w3 = 15–21, w4 = 22–fim); dois lados, explícitos: **marketing entregou** (leads, qualificados, agendamentos e custo de cada um) e **comercial converteu** (prazo de primeiro contato, comparecimento, propostas, vendas, valor vendido); perdas por etapa e por categoria (lead, atendimento, comercial, externo); maior vazamento; comparação com a semana anterior e com a meta |
 | **Criativos** | desempenho por anúncio e por argumento; o que está cansando; o que entrou e saiu |
 | **Ações** | o que foi feito na conta na semana (do histórico de alterações) e o resultado até agora |
 
@@ -78,13 +78,26 @@ Responsabilidades e indicadores do cargo de Assessor de Marketing, e o que o sis
 
 ### 3.4 Reunião mensal
 
-**Pacote da reunião**, dois dias úteis antes: resultado contra a meta vigente no mês (vendas, valor vendido, retorno sobre o investimento), raio-x do funil do mês por campanha e por responsável, testes e aprendizados, decisões do mês e efeito, números de apoio para a proposta dos próximos 30 dias, e documento ou slides com os dados para o assessor completar.
+**Pacote da reunião**, dois dias úteis antes, no formato do relatório mensal da Trilha:
+
+1. Resumo executivo (números; a leitura é do assessor)
+2. Funil por semana (w1–w4) e taxas de conversão contra a meta
+3. Indicadores financeiros: investimento, CPL (diagnóstico), CPL qualificado, CPO por canal, custo por venda (teto), retorno (piso), valor vendido
+4. Desempenho por público e por criativo
+5. Qualidade dos leads por score
+6. Vendas fechadas no mês e jornada de cada uma (canal, ciclo de vendas)
+7. Bloco "sem atribuição": vendas e leads não rastreados
+8. Raio-x do funil do mês por campanha, por SDR e por closer
+9. Testes, decisões do mês e efeito
+10. Números de apoio para as recomendações (escalar · pausar · investigar) e para as metas do mês seguinte
+
+Definições em [métricas](metricas.md). Sai como documento ou slides para o assessor completar.
 
 **O assessor** prepara a narrativa, conduz e registra os combinados. (Transformar a ata em tarefas é da automação paralela de captura de tarefas.)
 
 ### 3.5 Alinhamento com a equipe
 
-**Painel da carteira**, na véspera da reunião de equipe: semáforo por cliente (dentro da meta · atenção · crítico), maior vazamento de cada cliente, freio acionado na semana, tarefas atrasadas por pessoa e criativos pendentes (lidos do ClickUp), tokens de integração perto de vencer.
+**Painel da carteira**, na véspera da reunião de equipe: semáforo por cliente (dentro da meta · atenção · crítico), **saúde das contas de anúncio** (status, dias de saldo pré-pago e recarga sugerida — P1 resolver hoje, P2 esta semana), maior vazamento de cada cliente, leads parados, freio acionado na semana, tarefas atrasadas por pessoa e criativos pendentes (lidos do ClickUp), tokens de integração perto de vencer.
 
 ## 4. Freio de emergência
 

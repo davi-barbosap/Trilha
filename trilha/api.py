@@ -13,6 +13,7 @@ Rotas (todas exigem Authorization: Bearer <TRILHA_API_TOKEN>, exceto /saude):
   POST /freio/avaliar  {"cliente_id", "campanhas": [{plataforma, campanha_id, nome, ativa,
                         gasto_desde_ultimo_lead, horas_sem_evento_conversao, gasto_ultimas_horas}]}
   POST /funil/raio-x   {"cliente_id", "leads": [LeadFunil], "investimento"?}
+  POST /contas/saude   {"cliente_id", "contas": [{nome, plataforma, status, saldo, gasto_7d}]}
 
 Isolamento entre clientes em /conversao: cada cliente tem o próprio segredo de webhook
 (KOMMO_WEBHOOK_TOKEN_<CLIENTE>), a conta Kommo do corpo precisa ser a do perfil, e a etapa
@@ -41,6 +42,7 @@ from trilha.core.freio import MetricaCampanha, avaliar
 from trilha.core.funil import LeadFunil, raio_x
 from trilha.core.oferta import carregar_oferta
 from trilha.core.playbook import carregar_playbook
+from trilha.core.saude import ContaAnuncio, saude_do_cliente
 from trilha.core.perfil import Perfil, carregar_perfil
 from trilha.integracoes.kommo import DadosLead, KommoClient, subdominio_do_webhook
 
@@ -92,6 +94,7 @@ class TrilhaApi:
             ("POST", "/conversao"): self.conversao,
             ("POST", "/freio/avaliar"): self.freio,
             ("POST", "/funil/raio-x"): self.raio_x,
+            ("POST", "/contas/saude"): self.saude_contas,
         }
 
     def __call__(self, environ, start_response):
@@ -238,6 +241,15 @@ class TrilhaApi:
         except ValidationError as e:
             raise ErroHttp(400, f"métricas de campanha inválidas: {e.errors(include_url=False)}") from e
         return {"cliente": p.cliente.id, "modo": p.freio.modo, "acoes": [asdict(a) for a in avaliar(p, campanhas)]}
+
+    def saude_contas(self, dados):
+        p = self._perfil(dados)
+        try:
+            contas = [ContaAnuncio.model_validate(c) for c in dados.get("contas", [])]
+        except ValidationError as e:
+            raise ErroHttp(400, f"contas inválidas: {e.errors(include_url=False)}") from e
+        responsavel = p.operacao.responsavel if p.operacao else "assessor"
+        return {"cliente": p.cliente.id, **saude_do_cliente(contas, responsavel)}
 
     def raio_x(self, dados):
         p = self._perfil(dados)
