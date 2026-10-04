@@ -24,8 +24,9 @@ class TestPerfil(unittest.TestCase):
         crm = carregar_perfil(EXEMPLO).crm
         self.assertEqual(crm.evento_para(3333, 1111), "lead_qualificado")
         self.assertIsNone(crm.evento_para(3333, 9999))  # outro funil
-        self.assertEqual(crm.evento_para(142, 9999), "venda")
-        self.assertEqual(crm.evento_para(143, None), "desqualificado")
+        self.assertEqual(crm.evento_para(142, 1111), "venda")  # funil de fechamento
+        self.assertEqual(crm.evento_para(143, 1111), "perdido")
+        self.assertIsNone(crm.evento_para(142, 9999))  # funil não cadastrado não gera evento
 
     def test_freio_padrao_e_opcao_a_e_aceita_opcao_b(self):
         bruto = copy.deepcopy(self.bruto)

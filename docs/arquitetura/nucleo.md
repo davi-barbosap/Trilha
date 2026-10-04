@@ -3,7 +3,7 @@
 > **Escopo:** [ecossistema](../ecossistema.md) · **Quem faz o quê:** [modelo operacional](../modelo-operacional.md) — ambos prevalecem sobre este documento em caso de conflito.
 > Este documento reúne tudo o que é **comum a todas as plataformas**: estratégia, onboarding, perfil do cliente, brand kit, playbooks de segmento, conversão real, motores estatísticos, governança.
 > Módulos específicos: [Meta Ads](meta-ads.md) · [Google Ads](google-ads.md)
-> Status de implantação: [roadmap](../roadmap.md) · Decisões: [`docs/decisoes/`](../decisoes/) · Integrações: [`docs/integracoes/`](../integracoes/)
+> Status de implantação: [roadmap](../roadmap.md) · Métricas: [dicionário](../metricas.md) · Decisões: [`docs/decisoes/`](../decisoes/) · Integrações: [`docs/integracoes/`](../integracoes/)
 > Fonte do modelo de briefing de oferta e do playbook imobiliário: [`briefing-trilha`](https://github.com/beatriz-moraes082/briefing-trilha) — dependência formalizada em [ADR-005](../decisoes/005-dependencia-briefing-trilha.md).
 
 ## 1. Princípios
@@ -12,13 +12,14 @@
 2. **Negócio antes da conta de anúncios.** Metas derivam da economia unitária do cliente, não de chute.
 3. **Opera com dado incompleto.** O sistema se ajusta ao nível de maturidade do cliente em vez de exigir tudo preenchido.
 4. **Cálculo em código, nunca "de cabeça".** O modelo interpreta e recomenda; Python/R calcula.
-5. **Conversão real acima da métrica da plataforma.**
+5. **Conversão real acima da métrica da plataforma.** Resultado é venda e valor vendido; CPL é diagnóstico.
 6. **Concretude obrigatória.** Copy sem número, fato ou nome próprio é barrada.
 7. **Coerência do funil inteiro.** Anúncio → landing page → WhatsApp → atendimento comercial falam a mesma coisa. Este sistema cuida do lado dos anúncios e dos dados; páginas e atendimento são ferramentas paralelas que usam a mesma fonte (`marca.yaml`, `ofertas/`).
 8. **Leitura livre, escrita com aprovação**, com simulação prévia e possibilidade de reversão. Única exceção: o freio de emergência (§10).
 9. **Respeito ao algoritmo.** Menos mexidas, mais bem fundamentadas; proteção da fase de aprendizado.
 10. **Filtro humano obrigatório** em toda decisão que envolva verba ou promessa ao consumidor.
 11. **O sistema executa o trabalho manual; o assessor pensa, decide e se relaciona.** O sistema não fala com o cliente, não escreve mensagem, roteiro ou estratégia, e não mede o contato do assessor com o cliente.
+12. **Funil é o raio-x da operação.** O meio do funil é medido etapa por etapa, com o que o marketing entregou separado do que o comercial converteu ([raio-x do funil](../raio-x-do-funil.md)).
 
 ## 2. Visão geral das camadas
 
@@ -58,7 +59,7 @@
 
 ## 3. Camada 0 — Diagnóstico e estratégia
 
-Roda no onboarding de todo cliente e é revisada a cada trimestre. Produz quatro saídas antes de qualquer campanha.
+Roda no onboarding de todo cliente e é revisada a cada trimestre. Produz cinco saídas antes de qualquer campanha: economia unitária, nota de maturidade, auditoria, plano de 90 dias e diagnóstico de aderência da oferta.
 
 ### 3.1 Calculadora de economia unitária (matemática reversa)
 
@@ -112,12 +113,20 @@ Checklist técnico por plataforma (pixel/API de Conversões, tag, eventos, estru
 
 | Fase | Duração típica | Objetivo | Meta |
 |---|---|---|---|
-| Fundação | semanas 1–2 | rastreamento, estrutura, primeiros criativos | conta pronta, eventos validados |
-| Aprendizado | semanas 3–6 | volume de dados, testes de ângulo | CPL ≤ 1,3× máximo |
-| Otimização | semanas 7–10 | cortar perdedores, iterar vencedores | CPL ≤ máximo, qualificação ≥ meta |
-| Escala | semanas 11–13 | aumentar verba com controle | manter CPL qualificado com mais volume |
+| Fundação | semanas 1–2 | rastreamento, funil padrão e motivos de perda no Kommo, diagnóstico de aderência, primeiros criativos | conta pronta, eventos validados, Kommo no padrão |
+| Aprendizado | semanas 3–6 | volume de dados, testes de ângulo, primeiro raio-x | custo por qualificado ≤ 1,3× máximo |
+| Otimização | semanas 7–10 | atacar o maior vazamento do funil (mídia ou comercial), iterar vencedores | custo por qualificado ≤ máximo; vazamentos do atendimento tratados com o cliente |
+| Escala | semanas 11–13 | aumentar verba com controle | manter o custo por venda com mais volume |
 
-### 3.5 Uso da calculadora fora deste sistema
+### 3.5 Diagnóstico de aderência da oferta
+
+Antes de anunciar, o assessor responde as perguntas de aderência do playbook (`perguntas_aderencia`) e registra as respostas no bloco `aderencia` da oferta (§5.2): quem comprou até agora, uso próprio ou investimento, flexibilidade de pagamento, reputação de quem entrega, como estão as vendas fora do digital e a avaliação final de aderência ao digital.
+
+- O sistema não avalia: confere se o diagnóstico foi feito (`python -m trilha validar` lista as pendências) e leva os sinais de risco para o dossiê e para o pacote de briefing.
+- Produto com vendas fracas fora do digital: o digital tende a expor o problema mais rápido e mais caro. Pede nutrição mais longa, prova social mais robusta e contorno de objeção já no criativo.
+- No imobiliário, alto padrão raramente converte via tráfego frio.
+
+### 3.6 Uso da calculadora fora deste sistema
 
 A calculadora (`python -m trilha calcular`) também serve para prospecção comercial, mas esse é um uso paralelo ([ecossistema](../ecossistema.md) §4). Aqui ela existe para as metas de cada cliente.
 
@@ -226,6 +235,16 @@ oferta:
   tipo: ""                          # empreendimento, curso, serviço, produto
   estagio: ""                       # lançamento, em andamento, pronto, últimas vagas/unidades
   localizacao: { bairro: "", cidade_uf: "", regiao: "" }   # quando aplicável
+aderencia:                          # diagnóstico antes de anunciar (§3.5) — respostas do assessor
+  perfil_compradores: ""            # perfil financeiro, onde moram, o que fazem, o que motivou a compra
+  finalidade: ""                    # uso_proprio | investimento | ambos
+  pagamento_flexivel: null          # true | false
+  pagamento_comunicavel: ""
+  reputacao: ""                     # ativo | neutra | obstaculo
+  reputacao_nota: ""
+  vendas_fora_do_digital: { canais: [], ritmo: "", avaliacao: "" }   # boa | regular | fraca
+  aderencia_digital: ""             # alta | media | baixa
+  justificativa: ""
 diferenciais:                       # mínimo 3 — número, fato ou nome próprio
   - ""
 raridade: ""                        # diferencial único no mercado local
@@ -325,16 +344,19 @@ Especificação técnica completa: [Kommo](../integracoes/kommo.md). Código: `t
 
 ### 7.2 Mapa de eventos de qualidade
 
-Os status do funil Kommo (já previstos no briefing-trilha) viram eventos padronizados. **Os IDs de funil e de etapa mudam em cada conta Kommo**, então o mapa vive no `perfil.yaml` de cada cliente (`crm.mapa_eventos`); apenas as etapas de sistema do Kommo são fixas (142 = venda ganha, 143 = perdida) e entram como padrão.
+Cada funil do Kommo tem um papel (`crm.funis`: entrada, fechamento, nutrição, base, ignorar); o "ganho" (142) só é venda no funil de fechamento; nos demais precisa de `ganho_significa` ([Kommo](../integracoes/kommo.md) §3.1). As etapas seguem o **funil padrão da Trilha**, igual para todos os segmentos ([raio-x do funil](../raio-x-do-funil.md), [ADR-008](../decisoes/008-funil-padrao.md)). **Os IDs de funil e de etapa mudam em cada conta Kommo**, então o mapa vive no `perfil.yaml` de cada cliente (`crm.mapa_eventos`); apenas as etapas de sistema do Kommo são fixas (142 = venda ganha, 143 = perdida) e entram como padrão.
 
-| Status Kommo | Evento padrão | Retorno à plataforma |
+| Etapa no Kommo (nome do imobiliário) | Evento padrão | Retorno à plataforma |
 |---|---|---|
-| Lead entrou | `lead` | sim (otimização inicial) |
-| Interesse confirmado (pós pré-atendimento) | `lead_qualificado` | sim — **evento de otimização preferido** quando houver volume |
-| Visita/reunião agendada | `agendamento` | sim |
+| Novo lead | `lead` | sim (otimização inicial) |
+| Em atendimento | `em_atendimento` | uso interno (raio-x: primeiro contato) |
+| Qualificado | `lead_qualificado` | sim — **evento de otimização preferido** quando houver volume |
+| Visita agendada | `agendamento` | sim |
+| Visita realizada | `comparecimento` | opcional — sinal mais forte que o agendamento |
+| Proposta enviada | `proposta` | uso interno |
 | Venda (etapa 142) | `venda` (+ valor) | sim — base para ROAS-alvo |
-| Descartado / não cadastrou (etapa 143) | `desqualificado` | uso interno (e sinal negativo onde suportado) |
-| Reativado (respondeu nutrição) | `reativado` | uso interno |
+| Perdido (etapa 143) | `perdido` | uso interno; classificado pela categoria do motivo e pelo momento da perda |
+| Reativado | `reativado` | uso interno |
 
 **Quando o volume não sustenta otimizar por `lead_qualificado`** (§3.1 — o caso comum em PME):
 1. Otimizar por `lead`, mas com atrito qualificador na origem (perguntas no formulário, mensagem pré-preenchida que exige uma escolha, faixa de preço/parcela no anúncio quando a regra comercial permite).
@@ -348,7 +370,7 @@ No Brasil, a conversão principal costuma ser a conversa, não o formulário. Es
 - **Anúncio de clique para WhatsApp:** a conversa traz o `ctwa_clid`, que a integração do WhatsApp no Kommo — ou o BotConversa, quando ele faz o primeiro atendimento — precisa gravar no lead. É esse identificador que permite devolver ao Meta os eventos de qualidade da conversa (API de Conversões para mensagens).
 - **Site → WhatsApp:** botão com mensagem pré-preenchida contendo um código curto da campanha/criativo, gravado no lead (contrato com a ferramenta de landing pages).
 - **Funil do cliente:** o tempo até o primeiro contato do time comercial do cliente e a qualificação por atendente aparecem no dossiê e no relatório — não como alerta em tempo real.
-- **Atendimento × mídia:** tempo até o primeiro contato e taxa de qualificação **por atendente/corretor** separam problema de mídia de problema de atendimento — antes de cortar uma campanha, verifica-se quem atendeu os leads dela.
+- **Atendimento × mídia:** o raio-x do funil (primeiro contato, cadência e conversão **por atendente/corretor**) separa problema de mídia de problema de atendimento — antes de cortar uma campanha, verifica-se quem atendeu os leads dela.
 
 ### 7.4 Outras fontes de lead
 
@@ -358,6 +380,8 @@ Portais (imobiliário), indicação, orgânico e lista própria entram no CRM co
 
 | Motor | O que faz | Detalhes de plataforma |
 |---|---|---|
+| **Saúde das contas** | status da conta, dias de saldo pré-pago pela queima de 7 dias, recarga de 30 dias; alertas P1/P2 com ação e responsável | `trilha/core/saude.py`, painel da carteira |
+| **Raio-x do funil** | etapa por etapa, primeiro contato, cadência, perdas por categoria, maior vazamento, marketing entregou × comercial converteu, atribuição pelo Kommo | [raio-x do funil](../raio-x-do-funil.md) |
 | Relatórios | pontual, histórico, MTD com metas da versão vigente do perfil | em cada documento de plataforma |
 | Anomalias | contas e campanhas, boas e más | §9 |
 | Vencedores/potenciais | por anúncio, ângulo e termo | §9 |
@@ -452,7 +476,9 @@ Testes sem volume para atingir a amostra mínima não são abertos — o sistema
 
 **Canais de entrega:** urgências, freio e leitura diária vão para o Slack da operação; dossiês, relatórios e pacotes chegam como tarefas no ClickUp. **Nada sai do sistema direto para o cliente.**
 
-**Hierarquia de métricas por cliente** (definida no perfil): métrica de negócio (vendas, CAC) → métrica principal da plataforma (CPL qualificado, ROAS) → métricas de diagnóstico (CPM, CTR, retenção de vídeo). Relatórios nunca apresentam métrica de diagnóstico como resultado.
+**Definições:** [dicionário de métricas da Trilha](../metricas.md) (lead, qualificado, reunião, oportunidade, venda, CPL, CPO, CAC teto, ROAS piso, deduplicação, semanas w1–w4).
+
+**Hierarquia de métricas por cliente:** resultado (vendas, valor vendido — VGV no imobiliário —, retorno sobre o investimento, custo por venda e por comparecimento) → métrica principal da plataforma (custo por lead qualificado, ROAS) → diagnóstico (CPL, CPM, CTR, retenção de vídeo). Relatórios nunca apresentam métrica de diagnóstico como resultado.
 
 ## 12. Estrutura do repositório
 
@@ -463,14 +489,15 @@ Legenda: ✅ existe · ⬜ previsto no [roadmap](../roadmap.md).
 ├── README.md
 ├── pyproject.toml · .env.example · .gitignore · .github/workflows/testes.yml
 ├── docs/
-│   ├── ecossistema.md · modelo-operacional.md · roadmap.md
+│   ├── ecossistema.md · modelo-operacional.md · raio-x-do-funil.md · metricas.md · origem-dos-padroes.md · roadmap.md
 │   ├── arquitetura/           ✅ nucleo.md · meta-ads.md · google-ads.md
-│   ├── decisoes/              ✅ ADRs 001–007
+│   ├── decisoes/              ✅ ADRs 001–008
 │   └── integracoes/           ✅ n8n.md · kommo.md · clickup.md · ferramentas.md
 ├── trilha/                    pacote Python = trilha-api
 │   ├── api.py                 ✅ HTTP para o n8n
-│   ├── __main__.py            ✅ CLI: validar · calcular · simular-webhook · servir
-│   ├── core/                  ✅ perfil.py · economia.py · freio.py · ⬜ materiais (dossiê, relatório, briefing, reunião, painel)
+│   ├── __main__.py            ✅ CLI: validar · calcular · raio-x · simular-webhook · servir
+│   ├── core/                  ✅ perfil.py · oferta.py · playbook.py · economia.py · funil.py · atribuicao.py · freio.py · saude.py
+│   │                          ⬜ materiais (dossiê, relatório, briefing, reunião, painel)
 │   ├── conversao/             ✅ hash.py · pipeline.py
 │   ├── integracoes/           ✅ kommo.py · ⬜ clickup.py
 │   └── plataformas/           ✅ meta/capi.py · google/conversoes_offline.py
@@ -479,7 +506,7 @@ Legenda: ✅ existe · ⬜ previsto no [roadmap](../roadmap.md).
 │   ├── modelos/               ✅ w01-conversao-real.json · w10-vigia-de-falhas.json
 │   └── fluxos/                exportação diária da produção (gerada pelo backup)
 ├── infra/                     ✅ Dockerfile · docker-compose.yml · Caddyfile · backup.sh · .env.example · kommo.env.example
-├── playbooks/imobiliario/     ✅ playbook.yaml
+├── playbooks/                ✅ padrao/ (todos os segmentos) · imobiliario/
 └── clientes/_exemplo/         ✅ perfil.yaml · marca.yaml · ofertas/
 ```
 

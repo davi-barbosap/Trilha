@@ -39,11 +39,34 @@ plataformas:
 crm:
   tipo: kommo
   subdominio: imobiliaria-exemplo
-  mapa_eventos:
+  sla_primeiro_contato_min: 30    # do time comercial do cliente com o lead, em minutos de expediente
+  horario_comercial: { dias: [0, 1, 2, 3, 4, 5], inicio: 8, fim: 20, fuso_utc: -3 }   # 0 = segunda; plantão de sábado
+  dias_parado: 15                 # lead ativo sem movimentação há mais de 15 dias = parado
+  dias_base_velha: 30
+  baldes: [Imobiliária Exemplo]   # usuário da empresa: recebe leads, mas não é pessoa do time
+  gestores: []                    # aparecem no raio-x, fora da média e dos sinais por pessoa
+  origens:                        # apelidos de origem deste cliente, antes da regra geral
+    trilha-performance: Meta Ads
+  # Tags do Kommo lidas pelo raio-x (padrão em trilha/core/perfil.py, TagsCrm). Só declarar o que for diferente:
+  # tags: { comparecimento: [reunião-realizada], reativado: [lead reativado] }
+  # Papel de cada funil do Kommo. O "ganho" (142) muda de sentido: no Closer é venda, no SDR costuma ser
+  # reunião realizada. Conta com SDR + Closer:
+  #   - { pipeline_id: 1110, nome: SDR, papel: entrada, ganho_significa: comparecimento }
+  #   - { pipeline_id: 1111, nome: Closer, papel: fechamento }
+  #   - { pipeline_id: 1112, nome: Base importada, papel: base }   # fora de leads e CPL
+  funis:
+    - { pipeline_id: 1111, nome: Vendas, papel: fechamento }
+  mapa_eventos:                   # etapas padrão da Trilha (docs/raio-x-do-funil.md); 142 e 143 já são padrão
     - { pipeline_id: 1111, status_id: 2222, evento: lead }
+    - { pipeline_id: 1111, status_id: 2223, evento: em_atendimento }
     - { pipeline_id: 1111, status_id: 3333, evento: lead_qualificado }
     - { pipeline_id: 1111, status_id: 4444, evento: agendamento }
-    - { pipeline_id: 1111, status_id: 5555, evento: reativado }
+    - { pipeline_id: 1111, status_id: 4445, evento: comparecimento }
+    - { pipeline_id: 1111, status_id: 4446, evento: proposta }
+    # Etapas de saída que não são o 143 encerram o lead com motivo (senão viram "leads parados"):
+    - { pipeline_id: 1111, status_id: 5551, evento: perdido, motivo: Contato inválido }                       # Descartado
+    - { pipeline_id: 1111, status_id: 5552, evento: perdido, motivo: Não respondeu às tentativas de contato }  # Frio
+    - { pipeline_id: 1111, status_id: 5553, evento: reativado }
   campos:
     gclid: gclid
     gbraid: gbraid
@@ -55,6 +78,8 @@ crm:
     utm_campaign: utm_campaign
     utm_content: utm_content
     codigo_criativo: codigo_criativo
+    origem: Origem                # canal (Meta Ads, Google Ads, Não rastreado…); lido do lead ou do contato
+    motivo_perda: motivo_perda    # só se a conta não usar os motivos de perda nativos do Kommo
 
 conversao:
   eventos_semana_aprendizado: 50
@@ -62,8 +87,9 @@ conversao:
     lead:             { meta_event_name: Lead,             google_conversion_action_id: "900000001", valor: ponderado }
     lead_qualificado: { meta_event_name: LeadQualificado,  google_conversion_action_id: "900000002", valor: ponderado }
     agendamento:      { meta_event_name: Schedule,         google_conversion_action_id: "900000003", valor: ponderado }
+    comparecimento:   { meta_event_name: VisitaRealizada }
     venda:            { meta_event_name: Purchase,         google_conversion_action_id: "900000004", valor: receita }
-    # desqualificado e reativado: uso interno, sem destino
+    # em_atendimento, proposta e perdido: uso interno (raio-x do funil), sem destino
 
 # Freio de emergência: a única ação automática (ADR-006).
 freio:

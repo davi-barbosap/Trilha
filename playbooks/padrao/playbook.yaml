@@ -1,0 +1,43 @@
+# Funil padrão da Trilha, válido para qualquer segmento. Cada segmento sobrescreve o que precisar.
+segmento: padrao
+
+rotulos_etapas:
+  lead: Novo lead
+  em_atendimento: Em atendimento
+  lead_qualificado: Qualificado
+  agendamento: Reunião agendada
+  comparecimento: Reunião realizada
+  proposta: Proposta enviada
+  venda: Venda
+
+# Sem referência genérica de conversão: sem playbook do segmento, o raio-x compara com o histórico do cliente.
+taxas_referencia: {}
+
+# Motivo de perda (lista no Kommo) → categoria. A categoria diz de quem é a perda:
+#   lead        qualidade do lead que o marketing trouxe
+#   atendimento velocidade, cadência e condução do time comercial do cliente
+#   comercial   proposta, negociação e fechamento
+#   externo     fora do controle de marketing e comercial
+#   duplicado   o mesmo lead cadastrado de novo: qualidade de dado, fica fora das perdas
+motivos_perda:
+  Contato inválido: lead
+  Sem interesse no produto: lead
+  Fora do perfil financeiro: lead
+  Fora da região atendida: lead
+  Procurava outro produto ou serviço: lead
+  Não respondeu às tentativas de contato: atendimento
+  Demora no primeiro contato: atendimento
+  Não compareceu e não foi reagendado: atendimento
+  Escolheu um concorrente: comercial
+  Preço ou condição não atendeu: comercial
+  Desistiu após a proposta: comercial
+  Crédito ou financiamento negado: externo
+  Adiou a decisão: externo
+  Lead duplicado: duplicado
+
+perguntas_aderencia:
+  - Quem comprou até agora (perfil financeiro, onde mora, o que faz, o que motivou a compra)?
+  - O produto é para uso próprio ou investimento?
+  - Que flexibilidade de pagamento existe e pode ser comunicada?
+  - Qual a reputação da empresa (entrega no prazo, reclamações)? É um ativo ou um obstáculo?
+  - Como estão as vendas fora do digital (presencial, indicação, ritmo de vendas)?

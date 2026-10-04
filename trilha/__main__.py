@@ -1,4 +1,4 @@
-"""CLI do Trilha: validar · calcular · simular-webhook · servir."""
+"""CLI do Trilha: validar · calcular · raio-x · simular-webhook · servir."""
 
 from __future__ import annotations
 
@@ -9,16 +9,22 @@ from dataclasses import asdict
 
 from pydantic import ValidationError
 
-from trilha.core.economia import calcular
 from pathlib import Path
 
-from trilha.core.perfil import avisos_legado, carregar_perfil
+from trilha.core.economia import calcular
+from trilha.core.oferta import carregar_oferta
+from trilha.core.perfil import ETAPAS_FUNIL, avisos_legado, carregar_perfil
 
 
 def _brl(v: float | None) -> str:
     if v is None:
         return "—"
-    return "R$ " + f"{v:,.0f}".replace(",", ".")
+    casas = 2 if abs(v) < 1000 else 0
+    return "R$ " + f"{v:,.{casas}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _num(v: float | None) -> str:
+    return "—" if v is None else f"{v:g}".replace(".", ",")
 
 
 def cmd_validar(args) -> int:
@@ -37,6 +43,106 @@ def cmd_validar(args) -> int:
           f" ou {perfil.freio.horas_rastreamento_quebrado:g}h sem evento de conversão)")
     if perfil.crm and not perfil.crm.mapa_eventos:
         print("Atenção: crm.mapa_eventos vazio — só as etapas de sistema (142 venda, 143 perdida) serão mapeadas")
+    elif perfil.crm:
+        mapeadas = {m.evento for m in perfil.crm.mapa_completo()}
+        faltando = [e for e in ETAPAS_FUNIL if e not in mapeadas]
+        if faltando:
+            print("Atenção: etapas do funil sem etapa do Kommo (o raio-x fica incompleto): " + ", ".join(faltando))
+    if perfil.crm:
+        from trilha.core.playbook import carregar_playbook
+
+        lista = carregar_playbook(perfil.cliente.segmento).motivos_perda
+        for m in perfil.crm.mapa_eventos:
+            if m.motivo and m.motivo not in lista:
+                print(f"Atenção: motivo '{m.motivo}' (etapa {m.status_id}) não está na lista de motivos do playbook")
+        if any(f.papel == "nutricao" and f.ganho_significa is None for f in perfil.crm.funis):
+            print("Atenção: funil de nutrição sem ganho_significa — o ganho (142) dele não gera evento")
+    correcoes = Path(args.perfil).resolve().parent / "correcoes.yaml"
+    if correcoes.is_file():
+        from trilha.core.correcoes import carregar_correcoes
+
+        c = carregar_correcoes(correcoes)
+        print(f"Correções confirmadas: {len(c.excluir)} exclusão(ões), {len(c.data_da_venda)} data(s) de venda corrigida(s)")
+    for arquivo in sorted((Path(args.perfil).resolve().parent / "ofertas").glob("*.yaml")):
+        oferta = carregar_oferta(arquivo)
+        print(f"Oferta '{oferta.oferta.nome}': OK")
+        if pendencias := oferta.aderencia.pendencias():
+            print("  Diagnóstico de aderência pendente: " + ", ".join(pendencias))
+        for sinal in oferta.aderencia.sinais_de_risco():
+            print(f"  Sinal de risco: {sinal}")
+    return 0
+
+
+def _pct(v: float | None) -> str:
+    return "—" if v is None else f"{v * 100:.1f}%".replace(".", ",")
+
+
+def cmd_raio_x(args) -> int:
+    from trilha.core.correcoes import aplicar_correcoes, carregar_correcoes
+    from trilha.core.funil import LeadFunil, raio_x
+    from trilha.core.playbook import carregar_playbook
+
+    perfil = carregar_perfil(args.perfil)
+    with open(args.leads, encoding="utf-8") as f:
+        leads = [LeadFunil.model_validate(x) for x in json.load(f)]
+    leads = aplicar_correcoes(leads, carregar_correcoes(Path(args.perfil).parent / "correcoes.yaml"))
+    r = raio_x(leads, carregar_playbook(perfil.cliente.segmento), args.investimento, crm=perfil.crm)
+    if args.json:
+        print(json.dumps(r, ensure_ascii=False, indent=2, default=str))
+        return 0
+    res = r["resultado"]
+    print(f"Cliente: {perfil.cliente.nome} · {r['leads']} leads")
+    print(f"\nResultado: {res['vendas']} vendas · {_brl(res['valor_vendido'])} vendidos"
+          + (f" · retorno de {_num(res['retorno_sobre_investimento'])}× o investimento" if res["retorno_sobre_investimento"] else ""))
+    print(f"  custo por {r['etapas'][4]['rotulo'].lower()}: {_brl(res['custo_por_comparecimento'])} · custo por venda: {_brl(res['custo_por_venda'])}"
+          f" · CPL (diagnóstico): {_brl(res['diagnostico_cpl'])}")
+    print("\nFunil etapa por etapa:")
+    for e in r["etapas"]:
+        ref = f" (referência {_pct(e['referencia'])})" if e["referencia"] else ""
+        tempo = f" · mediana {_num(e['mediana_horas_desde_anterior'])} h desde a anterior" if e["mediana_horas_desde_anterior"] is not None else ""
+        conv = f" · {_pct(e['conversao_da_anterior'])} da anterior{ref}" if e["conversao_da_anterior"] is not None else ""
+        print(f"  {e['rotulo']:<18} {e['entraram']:>5}{conv}{tempo}")
+    pc = r["primeiro_contato"]
+    print(f"\nPrimeiro contato: mediana {_num(pc['mediana_minutos_uteis'])} min úteis ({_num(pc['mediana_minutos_corridos'])} corridos)"
+          f" · {_pct(pc['dentro_do_sla'])} dentro de {pc['sla_minutos']:g} min úteis · {pc['sem_primeiro_contato']} leads sem primeiro contato")
+    cad = r["cadencia"]
+    print(f"Cadência: perdidos antes de qualificar tiveram mediana de {_num(cad['mediana_tentativas_perdidos_antes_de_qualificar'])} tentativa(s);"
+          f" qualificados, {_num(cad['mediana_tentativas_qualificados'])}")
+    if v := r["maior_vazamento"]:
+        print(f"\nMaior vazamento: {v['rotulo']} ({v['lado']}) — {_pct(v['observado'])} contra {_pct(v['referencia'])} de referência"
+              f" ≈ {_num(v['vendas_a_mais'])} venda(s) a menos" + (f", {_brl(v['valor_a_mais'])}" if v["valor_a_mais"] else ""))
+    m, c = r["marketing_entregou"], r["comercial_converteu"]
+    print(f"\nMarketing entregou: {m['leads']} leads · {m['qualificados']} qualificados · {m['agendamentos']} agendamentos"
+          f" · {_brl(m['custo_por_qualificado'])} por qualificado")
+    print(f"Comercial converteu: {_pct(c['primeiro_contato_dentro_do_sla'])} no prazo de primeiro contato · {_pct(c['comparecimento'])} de comparecimento"
+          f" · {c['vendas']} vendas · {_pct(c['qualificado_para_venda'])} dos qualificados viraram venda")
+    p = r["perdas"]
+    print("\nPerdas por categoria: " + " · ".join(f"{k}: {v}" for k, v in sorted(p["por_categoria"].items(), key=lambda x: -x[1])))
+    if p["qualificados_perdidos_por_motivo_de_lead"]:
+        print(f"  {p['qualificados_perdidos_por_motivo_de_lead']} leads qualificados foram perdidos por motivo de lead: critério de qualificação a revisar")
+    if r["sinais"]:
+        print("\nSinais:")
+        for sinal in r["sinais"]:
+            print(f"  • {sinal}")
+    q = r["qualidade_dos_dados"]
+    if q["leads_duplicados_removidos"] or q["vendas_duplicadas_removidas"]:
+        print(f"\nDeduplicação: {q['leads_duplicados_removidos']} lead(s) e {q['vendas_duplicadas_removidas']} venda(s) repetidos removidos")
+    if res["custo_por_venda_e_teto_retorno_e_piso"]:
+        print(f"Custos sobre {res['leads_de_midia_paga']} leads de mídia paga; {res['vendas_nao_rastreadas']} venda(s) sem rastreio:"
+              " custo por venda é teto e retorno é piso")
+    print("\nPor responsável:")
+    for nome, d in r["por_responsavel"].items():
+        print(f"  {nome:<14} {d['leads']:>4} leads · primeiro contato {_num(d['mediana_minutos_uteis_primeiro_contato'])} min úteis ({_pct(d['dentro_do_sla'])} no prazo)"
+              f" · {d['vendas']} vendas")
+        if "perfil" in d:
+            print(f"                 perfil {d['perfil']} (100 = melhor do time no período)")
+        elif not d["amostra_suficiente"]:
+            print("                 (amostra pequena para comparar)")
+    if r["por_closer"]:
+        print("\nPor closer:")
+        for nome, d in r["por_closer"].items():
+            print(f"  {nome:<14} {d['comparecimentos']:>4} comparecimentos · {d['propostas']} propostas · {d['vendas']} vendas"
+                  f" ({_pct(d['comparecimento_para_venda'])})")
     return 0
 
 
@@ -103,6 +209,13 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("perfil")
     s.add_argument("--verba", type=float, help="verba mensal (padrão: a do perfil)")
     s.set_defaults(func=cmd_calcular)
+
+    s = sub.add_parser("raio-x", help="raio-x do funil etapa por etapa a partir do histórico de leads")
+    s.add_argument("leads", help="JSON com o histórico dos leads do período")
+    s.add_argument("--perfil", required=True)
+    s.add_argument("--investimento", type=float, help="investimento em mídia no período")
+    s.add_argument("--json", action="store_true", help="saída completa em JSON")
+    s.set_defaults(func=cmd_raio_x)
 
     s = sub.add_parser("simular-webhook", help="mostra o que um webhook do Kommo enviaria ao Meta e ao Google")
     s.add_argument("webhook", help="arquivo com o corpo form-urlencoded do webhook")

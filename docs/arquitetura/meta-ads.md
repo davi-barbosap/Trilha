@@ -66,7 +66,7 @@ Fase de aprendizado: o sistema estima se cada conjunto tem volume para sair do a
 | **Site / landing page** | oferta que precisa de explicação ou prova; e-commerce | pixel + API de Conversões via GTM server-side, deduplicados por `event_id`; coerência com o anúncio |
 
 **Escada de evento de otimização** (sobe conforme volume e maturidade):
-`lead` → `lead_qualificado` (status "interesse confirmado" no Kommo) → `agendamento` → `venda`.
+`lead` → `lead_qualificado` → `agendamento` → `comparecimento` → `venda` (etapas do funil padrão, [raio-x do funil](../raio-x-do-funil.md)). `comparecimento` é um sinal mais forte que `agendamento` quando há volume.
 O sistema recomenda subir de degrau quando o evento superior atinge volume semanal suficiente.
 
 **Viabilidade:** a Camada 0 (núcleo §3.1) calcula a verba mensal de cada degrau. Exemplo imobiliário: ~R$ 6 mil/mês para otimizar por `lead`, ~R$ 24 mil/mês para `lead_qualificado` em um único conjunto. Para a maioria das PMEs o degrau `lead_qualificado` é inviável; nesses casos valem as alternativas do núcleo §7.2 (atrito qualificador na origem, todos os eventos de qualidade enviados mesmo assim, valor ponderado por degrau).

@@ -11,3 +11,4 @@ Cada decisão estrutural é um arquivo curto: contexto, decisão, consequências
 | [005](005-dependencia-briefing-trilha.md) | Consumo do briefing-trilha por versão fixada e contrato de dados | proposta — depende da responsável pelo repositório |
 | [006](006-freio-de-emergencia.md) | Freio de emergência como única ação automática | aceita |
 | [007](007-escopo-do-sistema.md) | Escopo: execução manual dos serviços de mídia; o resto é paralelo | aceita |
+| [008](008-funil-padrao.md) | Funil padrão único para todos os segmentos; perda classificada por etapa e motivo; resultado é venda | aceita |

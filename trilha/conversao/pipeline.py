@@ -20,6 +20,7 @@ from trilha.plataformas.google import conversoes_offline as google
 from trilha.plataformas.meta import capi
 
 FUSO_PADRAO = ZoneInfo("America/Sao_Paulo")
+JANELA_GOOGLE_DIAS = 90
 
 
 @dataclass
@@ -31,6 +32,7 @@ class Envio:
     corpo: dict | None = None
     pulado: str | None = None  # motivo, quando não há envio (problema a investigar)
     pendente: str | None = None  # envio previsto mas ainda não implementado (não é problema do lead)
+    informativo: str | None = None  # não enviado por regra da plataforma; a venda conta no relatório pelo Kommo
     resposta: dict | None = None
 
 
@@ -86,7 +88,13 @@ def preparar_envios(m: MudancaEtapa, evento: str, dados: DadosLead, perfil: Perf
             envios.append(Envio("google", evento, m.lead_id, pulado="perfil sem plataformas.google.customer_id"))
         else:
             ev = google.montar_evento(dados, quando.astimezone(FUSO_PADRAO), event_id, valor, moeda)
-            if ev is None:
+            fora_da_janela = dados.criado_em and (quando.timestamp() - dados.criado_em) > JANELA_GOOGLE_DIAS * 86400
+            if fora_da_janela:
+                envios.append(Envio("google", evento, m.lead_id, informativo=(
+                    f"lead criado há mais de {JANELA_GOOGLE_DIAS} dias: fora da janela do Google; "
+                    "a venda conta no relatório pela atribuição do Kommo"
+                )))
+            elif ev is None:
                 envios.append(Envio("google", evento, m.lead_id, pulado="lead sem gclid/gbraid/wbraid nem contato"))
             else:
                 url, corpo = google.montar_requisicao(
@@ -124,7 +132,7 @@ def processar(
 def executar(envios: list[Envio], simular: bool = True, log_dir: str | Path | None = None) -> list[Envio]:
     """Envia (ou só registra, em simulação). O envio ao Google (Data Manager API, OAuth) ainda não está ligado."""
     for e in envios:
-        if e.pulado or e.pendente or simular:
+        if e.pulado or e.pendente or e.informativo or simular:
             continue
         if e.plataforma == "meta":
             e.resposta = capi.enviar(e.destino, e.corpo, os.environ["META_ACCESS_TOKEN"])

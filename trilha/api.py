@@ -12,6 +12,9 @@ Rotas (todas exigem Authorization: Bearer <TRILHA_API_TOKEN>, exceto /saude):
   POST /conversao      {"cliente_id", "webhook_token", "corpo": <webhook do Kommo, texto ou objeto>, "simular"?}
   POST /freio/avaliar  {"cliente_id", "campanhas": [{plataforma, campanha_id, nome, ativa,
                         gasto_desde_ultimo_lead, horas_sem_evento_conversao, gasto_ultimas_horas}]}
+  POST /funil/raio-x   {"cliente_id", "leads": [LeadFunil], "investimento"?, "investimento_captacao"?}
+  POST /contas/saude   {"cliente_id", "contas": [{nome, id, status, saldo, gasto_7d, anuncios_com_problema…}],
+                        "credencial_ok"?, "conferir_acesso"?}
 
 Isolamento entre clientes em /conversao: cada cliente tem o próprio segredo de webhook
 (KOMMO_WEBHOOK_TOKEN_<CLIENTE>), a conta Kommo do corpo precisa ser a do perfil, e a etapa
@@ -37,6 +40,11 @@ from trilha import __version__
 from trilha.conversao.pipeline import executar, processar
 from trilha.core.economia import calcular
 from trilha.core.freio import MetricaCampanha, avaliar
+from trilha.core.correcoes import aplicar_correcoes, carregar_correcoes
+from trilha.core.funil import LeadFunil, raio_x
+from trilha.core.oferta import carregar_oferta
+from trilha.core.playbook import carregar_playbook
+from trilha.core.saude import ContaAnuncio, saude_do_cliente
 from trilha.core.perfil import Perfil, carregar_perfil
 from trilha.integracoes.kommo import DadosLead, KommoClient, subdominio_do_webhook
 
@@ -87,6 +95,8 @@ class TrilhaApi:
             ("POST", "/calcular"): self.calcular,
             ("POST", "/conversao"): self.conversao,
             ("POST", "/freio/avaliar"): self.freio,
+            ("POST", "/funil/raio-x"): self.raio_x,
+            ("POST", "/contas/saude"): self.saude_contas,
         }
 
     def __call__(self, environ, start_response):
@@ -185,7 +195,17 @@ class TrilhaApi:
 
     def validar(self, dados):
         p = self._perfil(dados, aceita_inline=True)
-        return {"ok": True, "cliente": p.cliente.id, "versao": p.versao, "estimados": p.economia.estimados}
+        ofertas = []
+        if "cliente_id" in dados and "perfil" not in dados:
+            for arquivo in sorted((self.clientes_dir / p.cliente.id / "ofertas").glob("*.yaml")):
+                try:
+                    o = carregar_oferta(arquivo)
+                except (ValidationError, yaml.YAMLError) as e:
+                    raise ErroHttp(422, f"oferta {arquivo.name} inválida: {e}") from e
+                ofertas.append({"oferta": o.oferta.nome, "aderencia_pendente": o.aderencia.pendencias(),
+                                "sinais_de_risco": o.aderencia.sinais_de_risco()})
+        return {"ok": True, "cliente": p.cliente.id, "versao": p.versao, "estimados": p.economia.estimados,
+                "ofertas": ofertas}
 
     def calcular(self, dados):
         p = self._perfil(dados, aceita_inline=True)
@@ -208,10 +228,11 @@ class TrilhaApi:
             "simulado": simular,
             "envios": [asdict(e) for e in envios],
             "resumo": {
-                "enviados": sum(1 for e in envios if not e.pulado and not simular),
-                "simulados": sum(1 for e in envios if not e.pulado and simular),
+                "enviados": sum(1 for e in envios if e.corpo and not e.pendente and not simular),
+                "simulados": sum(1 for e in envios if e.corpo and simular),
                 "pulados": [f"{e.plataforma}/{e.evento}: {e.pulado}" for e in envios if e.pulado],
                 "pendentes": [f"{e.plataforma}/{e.evento}: {e.pendente}" for e in envios if e.pendente],
+                "informativos": [f"{e.plataforma}/{e.evento}: {e.informativo}" for e in envios if e.informativo],
             },
         }
 
@@ -222,6 +243,35 @@ class TrilhaApi:
         except ValidationError as e:
             raise ErroHttp(400, f"métricas de campanha inválidas: {e.errors(include_url=False)}") from e
         return {"cliente": p.cliente.id, "modo": p.freio.modo, "acoes": [asdict(a) for a in avaliar(p, campanhas)]}
+
+    def saude_contas(self, dados):
+        p = self._perfil(dados)
+        try:
+            contas = [ContaAnuncio.model_validate(c) for c in dados.get("contas", [])]
+        except ValidationError as e:
+            raise ErroHttp(400, f"contas inválidas: {e.errors(include_url=False)}") from e
+        responsavel = p.operacao.responsavel if p.operacao else "assessor"
+        esperadas = p.plataformas.meta.contas() if p.plataformas.meta else []
+        return {"cliente": p.cliente.id, **saude_do_cliente(
+            contas, responsavel, os.environ.get("TRILHA_RESPONSAVEL_TECNICO", "responsável técnico"),
+            contas_esperadas=esperadas if dados.get("conferir_acesso") else None,
+            credencial_ok=dados.get("credencial_ok", True) is not False)}
+
+    def raio_x(self, dados):
+        p = self._perfil(dados)
+        try:
+            leads = [LeadFunil.model_validate(x) for x in dados.get("leads", [])]
+        except ValidationError as e:
+            raise ErroHttp(400, f"histórico de leads inválido: {e.errors(include_url=False)}") from e
+        try:
+            correcoes = carregar_correcoes(self.clientes_dir / p.cliente.id / "correcoes.yaml")
+        except (ValidationError, yaml.YAMLError) as e:
+            raise ErroHttp(422, f"correcoes.yaml de '{p.cliente.id}' inválido: {e}") from e
+        leads = aplicar_correcoes(leads, correcoes)
+        investimento, captacao = dados.get("investimento"), dados.get("investimento_captacao")
+        return {"cliente": p.cliente.id,
+                **raio_x(leads, carregar_playbook(p.cliente.segmento), float(investimento) if investimento else None, crm=p.crm,
+                         investimento_captacao=float(captacao) if captacao is not None else None)}
 
 
 class _ServidorThreads(ThreadingMixIn, WSGIServer):

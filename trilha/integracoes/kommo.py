@@ -101,12 +101,15 @@ class DadosLead:
     lead_id: int
     status_id: int | None = None  # etapa ATUAL no Kommo (confirma o webhook)
     pipeline_id: int | None = None
-    valor: float | None = None  # "venda" do lead no Kommo
+    valor: float | None = None  # valor do negócio no Kommo (VGV no imobiliário)
+    responsavel_id: int | None = None
+    motivo_perda: str | None = None
     criado_em: int | None = None  # unix
     ids: dict[str, str] = field(default_factory=dict)
     utm: dict[str, str] = field(default_factory=dict)
     emails: list[str] = field(default_factory=list)
     telefones: list[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
 
 
 def _valores_campo(campos: list[dict] | None, nome: str) -> list[str]:
@@ -122,23 +125,37 @@ def extrair_dados_lead(lead: dict, contatos: list[dict], campos: dict[str, str])
     """Extrai identificadores de clique, UTMs e contato de um lead da API v4.
 
     `campos` mapeia o nome padrão (gclid, fbclid…) para o nome/código/ID do campo personalizado na conta.
+    Cada campo é procurado primeiro no lead e, se vazio, no contato: há contas em que a integração
+    (ou o bot) grava origem e UTMs no contato.
     """
     cfv = lead.get("custom_fields_values")
     dados = DadosLead(
         lead_id=int(lead["id"]),
         status_id=lead.get("status_id"),
         pipeline_id=lead.get("pipeline_id"),
+        responsavel_id=lead.get("responsible_user_id"),
         valor=float(lead["price"]) if lead.get("price") else None,
         criado_em=lead.get("created_at"),
     )
     for padrao, nome_na_conta in campos.items():
         valores = _valores_campo(cfv, nome_na_conta)
+        for contato in contatos:
+            if valores:
+                break
+            valores = _valores_campo(contato.get("custom_fields_values"), nome_na_conta)
         if not valores:
             continue
         if padrao in IDENTIFICADORES:
             dados.ids[padrao] = valores[0]
-        elif padrao.startswith("utm_") or padrao == "codigo_criativo":
+        elif padrao.startswith("utm_") or padrao in ("codigo_criativo", "origem"):
             dados.utm[padrao] = valores[0]
+    dados.tags = [t["name"] for t in (lead.get("_embedded") or {}).get("tags") or [] if t.get("name")]
+    motivos = (lead.get("_embedded") or {}).get("loss_reason") or []
+    if motivos and motivos[0].get("name"):
+        dados.motivo_perda = motivos[0]["name"]
+    elif "motivo_perda" in campos:
+        valores = _valores_campo(cfv, campos["motivo_perda"])
+        dados.motivo_perda = valores[0] if valores else None
     for contato in contatos:
         dados.emails += _valores_campo(contato.get("custom_fields_values"), "EMAIL")
         dados.telefones += _valores_campo(contato.get("custom_fields_values"), "PHONE")
@@ -169,7 +186,7 @@ class KommoClient:
         raise RuntimeError("inalcançável")
 
     def buscar_lead(self, lead_id: int) -> dict:
-        return self._get(f"/leads/{lead_id}?with=contacts")
+        return self._get(f"/leads/{lead_id}?with=contacts,loss_reason")
 
     def buscar_contato(self, contato_id: int) -> dict:
         return self._get(f"/contacts/{contato_id}")

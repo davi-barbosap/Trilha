@@ -37,6 +37,23 @@ class TestKommo(unittest.TestCase):
         self.assertEqual(len(d.emails), 1)
 
 
+    def test_motivo_de_perda_nativo_ou_campo(self):
+        base = {"id": 1, "status_id": 143, "responsible_user_id": 77}
+        nativo = extrair_dados_lead({**base, "_embedded": {"loss_reason": [{"id": 9, "name": "Escolheu um concorrente"}]}}, [], {})
+        self.assertEqual((nativo.motivo_perda, nativo.responsavel_id), ("Escolheu um concorrente", 77))
+        campo = extrair_dados_lead({**base, "custom_fields_values": [
+            {"field_name": "motivo_perda", "values": [{"value": "Adiou a decisão"}]}]}, [], {"motivo_perda": "motivo_perda"})
+        self.assertEqual(campo.motivo_perda, "Adiou a decisão")
+
+    def test_campo_no_contato_quando_o_lead_esta_vazio(self):
+        lead = {"id": 1, "custom_fields_values": [{"field_name": "utm_campaign", "values": [{"value": "do-lead"}]}]}
+        contato = {"id": 9, "custom_fields_values": [
+            {"field_name": "utm_campaign", "values": [{"value": "do-contato"}]},
+            {"field_name": "Origem", "values": [{"value": "Meta+Ads"}]}]}
+        d = extrair_dados_lead(lead, [contato], {"utm_campaign": "utm_campaign", "origem": "Origem"})
+        self.assertEqual(d.utm["utm_campaign"], "do-lead")  # o lead vem primeiro
+        self.assertEqual(d.utm["origem"], "Meta+Ads")  # só no contato
+
     def test_subdominio_do_webhook(self):
         self.assertEqual(subdominio_do_webhook((FIX / "kommo_webhook.txt").read_text()), "imobiliaria-exemplo")
         self.assertEqual(subdominio_do_webhook({"account": {"subdomain": "outra"}}), "outra")

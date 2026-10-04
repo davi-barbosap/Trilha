@@ -13,7 +13,13 @@ from typing import Annotated, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-Evento = Literal["lead", "lead_qualificado", "agendamento", "venda", "desqualificado", "reativado"]
+# Funil padrão da Trilha, igual para todos os segmentos (o playbook só muda os nomes exibidos).
+ETAPAS_FUNIL = ("lead", "em_atendimento", "lead_qualificado", "agendamento", "comparecimento", "proposta", "venda")
+Etapa = Literal["lead", "em_atendimento", "lead_qualificado", "agendamento", "comparecimento", "proposta", "venda"]
+Evento = Literal[
+    "lead", "em_atendimento", "lead_qualificado", "agendamento", "comparecimento", "proposta", "venda",
+    "perdido", "reativado",
+]
 ModeloReceita = Literal["venda_direta", "comissao", "recorrencia"]
 DiaUtil = Literal["segunda", "terca", "quarta", "quinta", "sexta"]
 Fracao = Annotated[float, Field(gt=0, le=1)]
@@ -91,8 +97,12 @@ class Verba(_Base):
 
 class Meta(_Base):
     ad_account_id: str | None = None
+    ad_account_ids: list[str] = Field(default_factory=list)  # cliente com mais de uma conta (ex.: vendas e pós-venda)
     pixel_id: str | None = None  # conjunto de dados da API de Conversões
     page_id: str | None = None  # necessário para eventos de WhatsApp (business_messaging)
+
+    def contas(self) -> list[str]:
+        return list(dict.fromkeys(([self.ad_account_id] if self.ad_account_id else []) + self.ad_account_ids))
 
 
 class Google(_Base):
@@ -109,27 +119,107 @@ class MapaEvento(_Base):
     pipeline_id: int | None = None  # None = qualquer funil
     status_id: int
     evento: Evento
+    # Para etapas de saída que não são o 143 ("Descartado", "Frio"): motivo usado quando o lead não tem um.
+    motivo: str | None = None
+
+
+class Funil(_Base):
+    """Um funil (pipeline) do Kommo e o papel dele na operação.
+
+    O status 142 ("ganho") muda de sentido conforme o funil: no Closer é venda; no SDR
+    costuma ser "reunião realizada". Por isso o significado vem do papel do funil.
+    """
+
+    pipeline_id: int
+    nome: str = ""
+    # entrada: onde o lead nasce (SDR) · fechamento: onde a venda acontece (Closer)
+    # nutricao: leads em nutrição · base: trabalho sobre base importada · ignorar: teste
+    papel: Literal["entrada", "fechamento", "nutricao", "base", "ignorar"]
+    ganho_significa: Evento | None = None  # obrigatório para o 142 contar fora do funil de fechamento
+
+    @model_validator(mode="after")
+    def _ganho(self) -> Funil:
+        if self.papel == "fechamento" and self.ganho_significa is None:
+            self.ganho_significa = "venda"
+        return self
+
+
+class TagsCrm(_Base):
+    """Nomes das tags do Kommo que o raio-x lê. Comparação sem maiúsculas e sem acento;
+    "lead reativado" também reconhece "lead reativado | follow-up"."""
+
+    bot_concluido: list[str] = Field(default_factory=lambda: ["bot-concluido", "Interesse Confirmado"])
+    bot_incompleto: list[str] = Field(default_factory=lambda: ["bot-incompleto"])
+    bot_nao_iniciado: list[str] = Field(default_factory=lambda: ["bot-nao-iniciado", "lead frio"])
+    interagiu: list[str] = Field(default_factory=lambda: ["Interagiu"])
+    qualificado: list[str] = Field(default_factory=lambda: ["lead-qualificado"])
+    agendamento: list[str] = Field(default_factory=lambda: ["reuniao-agendada", "reagendar-reuniao", "visita-agendada"])
+    comparecimento: list[str] = Field(default_factory=lambda: ["reuniao-realizada", "visita-realizada"])
+    reativado: list[str] = Field(default_factory=lambda: ["lead reativado", "reativado"])
+    contato_invalido: list[str] = Field(default_factory=lambda: ["nao-cadastrou"])
+
+
+class HorarioComercial(_Base):
+    dias: list[Annotated[int, Field(ge=0, le=6)]] = Field(default_factory=lambda: [0, 1, 2, 3, 4])  # 0 = segunda
+    inicio: Annotated[int, Field(ge=0, le=23)] = 8
+    fim: Annotated[int, Field(ge=1, le=24)] = 18
+    fuso_utc: Annotated[int, Field(ge=-12, le=14)] = -3
 
 
 class Crm(_Base):
     tipo: Literal["kommo"] = "kommo"
     subdominio: str
+    funis: list[Funil] = Field(default_factory=list)  # vazio = conta com um funil só
     mapa_eventos: list[MapaEvento] = Field(default_factory=list)
     campos: dict[str, str] = Field(default_factory=dict)
+    sla_primeiro_contato_min: Positivo = 30  # do time comercial do cliente com o lead
+    tags: TagsCrm = Field(default_factory=TagsCrm)
+    origens: dict[str, str] = Field(default_factory=dict)  # apelidos do cliente: {"trilha-performance": "Meta Ads"}
+    baldes: list[str] = Field(default_factory=list)  # usuários que não são pessoas (ex.: o usuário da empresa)
+    gestores: list[str] = Field(default_factory=list)  # aparecem no raio-x, fora da média e dos sinais por pessoa
+    dias_parado: Annotated[int, Field(ge=1)] = 15
+    dias_base_velha: Annotated[int, Field(ge=1)] = 30
+    horario_comercial: HorarioComercial = Field(default_factory=HorarioComercial)
+
+    def funil(self, pipeline_id: int | None) -> Funil | None:
+        return next((f for f in self.funis if f.pipeline_id == pipeline_id), None)
 
     def mapa_completo(self) -> list[MapaEvento]:
-        """Mapa do cliente + padrões das etapas de sistema do Kommo (o do cliente tem prioridade)."""
+        """Mapa do cliente + etapas de sistema do Kommo (142 e 143), resolvidas pelo papel de cada funil."""
         mapa = list(self.mapa_eventos)
-        configurados = {m.status_id for m in mapa}
-        for status, evento in ((KOMMO_STATUS_GANHO, "venda"), (KOMMO_STATUS_PERDIDO, "desqualificado")):
-            if status not in configurados:
-                mapa.append(MapaEvento(status_id=status, evento=evento))
+        configurados = {(m.pipeline_id, m.status_id) for m in mapa}
+        if not self.funis:
+            for status, evento in ((KOMMO_STATUS_GANHO, "venda"), (KOMMO_STATUS_PERDIDO, "perdido")):
+                if not any(s == status for _, s in configurados):
+                    mapa.append(MapaEvento(status_id=status, evento=evento))
+            return mapa
+        for f in self.funis:
+            if f.papel in ("base", "ignorar"):
+                continue
+            if f.ganho_significa and (f.pipeline_id, KOMMO_STATUS_GANHO) not in configurados:
+                mapa.append(MapaEvento(pipeline_id=f.pipeline_id, status_id=KOMMO_STATUS_GANHO, evento=f.ganho_significa))
+            if (f.pipeline_id, KOMMO_STATUS_PERDIDO) not in configurados:
+                mapa.append(MapaEvento(pipeline_id=f.pipeline_id, status_id=KOMMO_STATUS_PERDIDO, evento="perdido"))
         return mapa
 
     def evento_para(self, status_id: int, pipeline_id: int | None) -> Evento | None:
+        f = self.funil(pipeline_id)
+        if f is not None and f.papel in ("base", "ignorar"):
+            return None
+        if self.funis and f is None:
+            return None  # funil não cadastrado: na dúvida, não gera evento
+        m = self._mapa_para(status_id, pipeline_id)
+        return m.evento if m else None
+
+    def motivo_para(self, status_id: int, pipeline_id: int | None) -> str | None:
+        """Motivo de uma etapa de saída que não é o 143 (ex.: "Descartado" → "Contato inválido")."""
+        m = self._mapa_para(status_id, pipeline_id)
+        return m.motivo if m and self.evento_para(status_id, pipeline_id) else None
+
+    def _mapa_para(self, status_id: int, pipeline_id: int | None) -> MapaEvento | None:
         for m in self.mapa_completo():
             if m.status_id == status_id and (m.pipeline_id is None or m.pipeline_id == pipeline_id):
-                return m.evento
+                return m
         return None
 
 

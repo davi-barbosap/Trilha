@@ -126,6 +126,23 @@ class TestApi(unittest.TestCase):
         finally:
             shutil.rmtree(tmp)
 
+    def test_raio_x_e_validar_com_ofertas(self):
+        leads = json.loads((FIX / "funil_leads.json").read_text())
+        status, r = chamar(self.app, "POST", "/funil/raio-x", {"cliente_id": "_exemplo", "leads": leads, "investimento": 7550})
+        self.assertEqual(status, 200)
+        self.assertEqual(r["maior_vazamento"]["etapa"], "comparecimento")
+        self.assertEqual(r["resultado"]["valor_vendido"], 7084000)
+        self.assertEqual(chamar(self.app, "POST", "/funil/raio-x", {"cliente_id": "_exemplo", "leads": [{"x": 1}]})[0], 400)
+        status, r = chamar(self.app, "POST", "/validar", {"cliente_id": "_exemplo"})
+        self.assertEqual(r["ofertas"][0]["aderencia_pendente"], [])
+
+    def test_saude_das_contas(self):
+        status, r = chamar(self.app, "POST", "/contas/saude", {"cliente_id": "_exemplo", "contas": [
+            {"nome": "Conta principal", "saldo": 280, "gasto_7d": 700}]})
+        self.assertEqual((status, r["saude"]), (200, "vermelho"))
+        self.assertEqual(r["alertas"][0]["responsavel"], "Assessor responsável")
+        self.assertEqual(chamar(self.app, "POST", "/contas/saude", {"cliente_id": "_exemplo", "contas": [{"saldo": -1}]})[0], 400)
+
     def test_rota_inexistente(self):
         self.assertEqual(chamar(self.app, "GET", "/nada")[0], 404)
 

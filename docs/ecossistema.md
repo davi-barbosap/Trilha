@@ -13,7 +13,8 @@ O sistema **não pensa a estratégia** e **não fala com o cliente**.
 
 | Assessor (humano) | Este sistema (Trilha) | Ferramentas paralelas (fora deste repositório) |
 |---|---|---|
-| Estratégia, decisões de verba, estrutura, criativo e oferta | **Conversão real:** Kommo → Meta (API de Conversões) e Google (Data Manager API) | **BotConversa:** atendimento e fluxos no WhatsApp |
+| Estratégia, decisões de verba, estrutura, criativo e oferta | **Raio-x do funil:** etapa por etapa, primeiro contato e cadência do time comercial do cliente, perdas por categoria, maior vazamento, marketing entregou × comercial converteu |  |
+| Diagnóstico de aderência da oferta (responde as perguntas) | **Conversão real:** Kommo → Meta (API de Conversões) e Google (Data Manager API) | **BotConversa:** atendimento e fluxos no WhatsApp |
 | **Contatos proativos** com o cliente (≥ 3 por semana) | **Coleta e monitoramento:** Meta, Google e Kommo; pacing; urgências; freio de emergência | **GA4 / GTM:** rastreamento do site e eventos |
 | **Respostas no grupo do cliente** (≤ 2 h) | **Dossiê da otimização semanal** e execução do que o assessor aprovar | **Landing pages** |
 | Sessão de otimização semanal (decide) | **Números do relatório semanal** ao cliente (leads · criativos · ações) | **Disparos em massa** |
@@ -28,16 +29,35 @@ O Trilha não constrói essas ferramentas, mas depende do que elas gravam. Sem i
 
 | Ferramenta paralela | Precisa entregar ao Trilha | Por quê |
 |---|---|---|
-| **Landing pages** | campos ocultos com `gclid`, `gbraid`, `wbraid`, `fbclid` e UTMs, gravados nos campos personalizados do lead no Kommo ([Kommo](integracoes/kommo.md) §4) | sem o identificador de clique, a venda não volta para o Google/Meta |
+| **Landing pages** | campos ocultos com `gclid`, `gbraid`, `wbraid`, `fbclid` e as 5 UTMs, gravados nos campos personalizados do lead no Kommo ([Kommo](integracoes/kommo.md) §4), mesmo quando o envio passa por um webhook intermediário (Make); payload com esquema fixo (todas as chaves, vazias quando não houver); telefone em E.164 sem duplicar o DDI; hora do clique (`capturado_em`); evento de lead só depois do recebimento confirmado, com `event_id` compartilhado com o servidor; botão de WhatsApp com código de criativo na mensagem pré-preenchida | sem o identificador de clique, a venda não volta para o Google/Meta; sem código no WhatsApp, o lead do botão chega sem atribuição |
 | **BotConversa** | quando atender a conversa vinda de anúncio de clique para WhatsApp, repassar o `ctwa_clid` e as UTMs ao lead no Kommo; mover o lead nas etapas padronizadas | sem o `ctwa_clid`, a qualificação da conversa não volta para o Meta |
 | **GA4 / GTM** | tag do Google e pixel do Meta funcionando nas páginas; eventos de conversão do site; `event_id` compartilhado entre pixel e servidor quando houver API de Conversões no site | o freio de emergência usa "horas sem evento de conversão"; deduplicação no Meta |
-| **Fluxos de CRM (Kommo)** | etapas do funil padronizadas e estáveis (o mapa etapa → evento depende dos IDs); motivo de perda obrigatório | mapa de eventos (`crm.mapa_eventos`) e bloco "leads" do relatório |
+| **Fluxos de CRM (Kommo)** | funil com as etapas padrão; motivos de perda nativos do Kommo com a lista padrão, obrigatórios; responsável em todo lead; contatos registrados no Kommo ([raio-x do funil](raio-x-do-funil.md), contrato) | sem isso não há raio-x: não dá para saber onde está o vazamento nem de quem é a perda |
 | **Captura de tarefas (n8n)** | tarefas no ClickUp com o cliente identificado (pasta do cliente) | painel da carteira lê tarefas atrasadas por pessoa |
 | **Onboarding (briefing-trilha)** | `perfil.yaml`, `marca.yaml`, `ofertas/*.yaml` que passam no `python -m trilha validar` | contrato de dados ([ADR-005](decisoes/005-dependencia-briefing-trilha.md)) |
 
 Mudou uma etapa no Kommo, um campo oculto da página ou o fluxo do BotConversa? Avisar quem cuida do Trilha: o mapa de eventos e o W01 precisam acompanhar.
 
-## 4. Fora do escopo, de propósito
+### Ferramentas paralelas que já existem
+
+| Ferramenta (repositório) | Relação com este sistema |
+|---|---|
+| Painéis de mensuração por cliente (`mensuracao-ibr`, `mensuracao-mme`, `maia-dash`, `ni-report`, `*-report`) | camada de relatório publicada para o cliente; devem seguir o mesmo [dicionário de métricas](metricas.md) para os números baterem |
+| Painel de saúde da carteira (`trilha-painel`) | mesma função do painel da carteira; as regras de saúde das contas foram trazidas para cá (`saude.py`) |
+| Ranking de corretores (`ranking-corretores-lion`) | painel de TV para o cliente; usa as mesmas ideias de leads parados e perfil comparativo |
+| Rotinas de tags no Kommo (estado do bot, `Interagiu`) | automação de CRM (GitHub Actions do IBR e do IMR, com simulação antes de gravar e log para desfazer); o raio-x lê as tags com os nomes reais ([Kommo](integracoes/kommo.md) §3.2) |
+| Salesbots e fluxos do pré-atendimento (`briefing-trilha`, `mensuracao-mme/bot-flows`) | aplicam as tags e etapas que o raio-x lê (Interesse Confirmado, lead frio, não-cadastrou, reativado, bot-*) |
+| Disparos (Mailchimp no IMR) | disparo em massa; fora do escopo |
+| Landing pages (`bossa-site`, LPs do `mensuracao-mme`) | o `bossa-site` cumpre a captura (UTMs, `gclid`, `gbraid`, `wbraid`, `fbclid`, esquema fixo, `generate_lead` só após o webhook confirmar). A regra real é "o último clique com campanha na sessão vence, e a navegação orgânica depois não apaga", guardada em `sessionStorage` (não atravessa sessões). Faltam `event_id` compartilhado, código de criativo no WhatsApp e Consent Mode. As LPs do IMR não gravam identificadores de clique nem UTMs em campo próprio, e duas versões antigas não enviam o lead a lugar nenhum |
+| Briefing (`briefing-trilha`) | onboarding da oferta e fluxos do Kommo ([ADR-005](decisoes/005-dependencia-briefing-trilha.md)) |
+
+Origem detalhada de cada padrão: [origem dos padrões](origem-dos-padroes.md).
+
+## 4. Time comercial do cliente ≠ assessor
+
+O sistema **mede** o time comercial do cliente (corretores, atendentes) atendendo os leads: primeiro contato, cadência, conversão. Isso é o raio-x do funil. O sistema **não mede** o contato do assessor com o cliente (contatos proativos, respostas no grupo).
+
+## 5. Fora do escopo, de propósito
 
 - Construir landing pages, disparos em massa ou fluxos de CRM/atendimento.
 - Medir ou cobrar tempo de resposta e contatos do assessor com o cliente.
