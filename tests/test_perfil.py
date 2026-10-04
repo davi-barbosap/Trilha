@@ -25,7 +25,7 @@ class TestPerfil(unittest.TestCase):
         self.assertEqual(crm.evento_para(3333, 1111), "lead_qualificado")
         self.assertIsNone(crm.evento_para(3333, 9999))  # outro funil
         self.assertEqual(crm.evento_para(142, 9999), "venda")
-        self.assertEqual(crm.evento_para(143, None), "desqualificado")
+        self.assertEqual(crm.evento_para(143, None), "perdido")
 
     def test_freio_padrao_e_opcao_a_e_aceita_opcao_b(self):
         bruto = copy.deepcopy(self.bruto)

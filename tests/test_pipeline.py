@@ -70,7 +70,7 @@ class TestPipeline(unittest.TestCase):
         perdido = "leads[status][0][id]=1&leads[status][0][status_id]=143&leads[status][0][pipeline_id]=1111"
         self.dados.status_id = 143
         [e] = processar(perdido, self.perfil, lambda _: self.dados)
-        self.assertEqual(e.evento, "desqualificado")
+        self.assertEqual(e.evento, "perdido")
         self.assertIn("uso interno", e.pulado)
 
         repetido = "leads[status][0][id]=1&leads[status][0][status_id]=3333&leads[status][0][pipeline_id]=1111&leads[status][0][old_status_id]=3333"
@@ -98,6 +98,16 @@ class TestPipeline(unittest.TestCase):
         google_real = executar([google], simular=False)[0]
         self.assertIsNone(google_real.pulado)
         self.assertIn("não implementado", google_real.pendente)
+
+    def test_venda_fora_da_janela_do_google_fica_so_no_relatorio(self):
+        corpo = "leads[status][0][id]=987654&leads[status][0][status_id]=142&leads[status][0][pipeline_id]=1111&leads[status][0][updated_at]=1790000000"
+        self.dados.status_id = 142
+        self.dados.criado_em = 1790000000 - 100 * 86400
+        meta, google = processar(corpo, self.perfil, lambda _: self.dados)
+        self.assertIsNotNone(meta.corpo)
+        self.assertIsNone(google.corpo)
+        self.assertIsNone(google.pulado)
+        self.assertIn("atribuição do Kommo", google.informativo)
 
     def test_data_hora_google_exige_fuso(self):
         self.assertEqual(formatar_data_hora(datetime(2026, 10, 3, 12, 0, tzinfo=timezone.utc)), "2026-10-03T12:00:00+00:00")

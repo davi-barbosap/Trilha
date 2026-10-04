@@ -19,7 +19,7 @@ Responsabilidades e indicadores do cargo de Assessor de Marketing, e o que o sis
 | **Copy & briefing** — briefings para criação com base em dados | escreve a estratégia do briefing e a copy | pacote de dados do briefing (o que converte, o que cansou, objeções e motivos de perda) |
 | **Relatórios** — análises semanais e mensais com insights | escreve os insights e apresenta | números e gráficos do relatório semanal (leads · criativos · ações) e do pacote mensal |
 | **Atendimento** — principal ponto de contato | **100% humano** | — |
-| **CRM** — jornada do lead no funil | acompanha e cobra o time comercial do cliente | conversão real e dados do funil do Kommo nos relatórios |
+| **CRM** — jornada do lead no funil | acompanha e cobra o time comercial do cliente | **raio-x do funil**: etapa por etapa, primeiro contato, cadência, perdas por categoria, maior vazamento, marketing × comercial |
 | **Automações** — fluxos de CRM, disparos, landing pages | configura | **fora deste sistema** — ferramentas paralelas ([ecossistema](ecossistema.md)) |
 | KPI: 1 otimização semanal por cliente | faz | dossiê na véspera |
 | KPI: ≥ 1 reunião mensal por cliente | conduz | pacote dois dias úteis antes |
@@ -38,13 +38,14 @@ Responsabilidades e indicadores do cargo de Assessor de Marketing, e o que o sis
 
 | Bloco | Conteúdo |
 |---|---|
-| Placar | gasto, leads, leads qualificados, agendamentos e vendas **pelo Kommo**, contra a meta vigente do perfil; pacing do mês |
+| Placar | vendas e valor vendido, custo por comparecimento e por venda, e o funil **pelo Kommo**, contra a meta vigente do perfil; pacing do mês |
+| **Raio-x do funil** | maior vazamento da semana e passagens abaixo da referência, com quanto custam em vendas e R$ — lido **antes** de qualquer ponto de atenção de mídia ([raio-x do funil](raio-x-do-funil.md)) |
 | O que mudou | alterações na conta desde a última sessão (nossas, do cliente, da plataforma) e o que veio depois |
 | Decisões anteriores | o que foi aprovado na semana passada e o efeito observado |
 | Pontos de atenção | 3 a 5 achados ordenados por R$ em jogo, cada um com os números que o sustentam e a simulação das ações possíveis |
 | Testes em andamento | amostra atual × mínima, previsão de conclusão |
 | Freio | o que foi pausado na semana e por quê |
-| Funil do cliente | tempo até o primeiro contato e qualificação por corretor/atendente (dados do Kommo) |
+| Time comercial do cliente | primeiro contato, cadência e conversão por responsável; qualificados perdidos por motivo de lead (critério a revisar) |
 
 **O assessor** decide o que fazer. Mudanças simples (orçamento, pausar/ativar) ele marca na tarefa e o sistema executa, registra e guarda como desfazer. Campanhas e anúncios novos, ele cria.
 **Tempo-alvo:** 30–45 min por cliente.
@@ -55,7 +56,7 @@ Responsabilidades e indicadores do cargo de Assessor de Marketing, e o que o sis
 
 | Bloco | Números |
 |---|---|
-| **Leads** | quantos chegaram, qualificaram, agendaram e compraram; custo de cada etapa; motivos de perda; comparação com a semana anterior e com a meta |
+| **Leads** | dois lados, explícitos: **marketing entregou** (leads, qualificados, agendamentos e custo de cada um) e **comercial converteu** (prazo de primeiro contato, comparecimento, propostas, vendas, valor vendido); perdas por etapa e por categoria (lead, atendimento, comercial, externo); maior vazamento; comparação com a semana anterior e com a meta |
 | **Criativos** | desempenho por anúncio e por argumento; o que está cansando; o que entrou e saiu |
 | **Ações** | o que foi feito na conta na semana (do histórico de alterações) e o resultado até agora |
 
@@ -68,6 +69,7 @@ Responsabilidades e indicadores do cargo de Assessor de Marketing, e o que o sis
 - argumentos (eixos), públicos e formatos com melhor e pior resultado;
 - criativos que estão cansando;
 - objeções e motivos de perda registrados no Kommo;
+- sinais de risco do diagnóstico de aderência da oferta (ex.: vendas fracas fora do digital pedem nutrição mais longa, prova social mais robusta e contorno de objeção já no criativo);
 - diferenciais e objeções da oferta (`ofertas/*.yaml`);
 - o modelo de briefing do time de criação com esses campos preenchidos.
 
@@ -76,13 +78,13 @@ Responsabilidades e indicadores do cargo de Assessor de Marketing, e o que o sis
 
 ### 3.4 Reunião mensal
 
-**Pacote da reunião**, dois dias úteis antes: resultado contra a meta vigente no mês, testes e aprendizados, decisões do mês e efeito, números de apoio para a proposta dos próximos 30 dias, e documento ou slides com os dados para o assessor completar.
+**Pacote da reunião**, dois dias úteis antes: resultado contra a meta vigente no mês (vendas, valor vendido, retorno sobre o investimento), raio-x do funil do mês por campanha e por responsável, testes e aprendizados, decisões do mês e efeito, números de apoio para a proposta dos próximos 30 dias, e documento ou slides com os dados para o assessor completar.
 
 **O assessor** prepara a narrativa, conduz e registra os combinados. (Transformar a ata em tarefas é da automação paralela de captura de tarefas.)
 
 ### 3.5 Alinhamento com a equipe
 
-**Painel da carteira**, na véspera da reunião de equipe: semáforo por cliente (dentro da meta · atenção · crítico), freio acionado na semana, tarefas atrasadas por pessoa e criativos pendentes (lidos do ClickUp), tokens de integração perto de vencer.
+**Painel da carteira**, na véspera da reunião de equipe: semáforo por cliente (dentro da meta · atenção · crítico), maior vazamento de cada cliente, freio acionado na semana, tarefas atrasadas por pessoa e criativos pendentes (lidos do ClickUp), tokens de integração perto de vencer.
 
 ## 4. Freio de emergência
 

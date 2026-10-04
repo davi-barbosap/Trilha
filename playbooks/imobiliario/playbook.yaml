@@ -1,5 +1,5 @@
-# Playbook imobiliário — padrões do segmento (núcleo §6). Derivado do briefing-trilha (ADR-005).
-# Tudo aqui é ponto de partida: o perfil do cliente sobrescreve e marca o que ainda é estimado.
+# Playbook imobiliário: sobrescreve playbooks/padrao/ no que é próprio do segmento.
+# Ponto de partida: o perfil do cliente sobrescreve e marca o que ainda é estimado.
 segmento: imobiliario
 
 economia_padrao:
@@ -36,10 +36,32 @@ calendario:
   - { periodo: "nov", nota: "Black Friday imobiliária — condições com prazo" }
   - { periodo: "dez (2ª quinzena)", nota: "queda de demanda; reduzir verba de teste" }
 
-# Referência para a ferramenta paralela de fluxos de CRM (ecossistema.md) — não usado por este sistema.
-fluxos_atendimento:
-  - pre_atendimento
-  - follow_up_curto
-  - nutricao_por_eixo
-  - apresentacao_escalonada
-  - pre_atendimento_1x1_escalonado
+rotulos_etapas:
+  agendamento: Visita agendada
+  comparecimento: Visita realizada
+
+# Conversão esperada da etapa anterior para cada etapa. O produto delas (~1,1%) bate com a taxa de
+# fechamento padrão (1%) e com a operação real da Trilha (425 leads → 4 vendas = 0,94%).
+taxas_referencia:
+  em_atendimento: 0.90
+  lead_qualificado: 0.35
+  agendamento: 0.45
+  comparecimento: 0.65
+  proposta: 0.35
+  venda: 0.35
+
+motivos_perda:
+  Renda insuficiente para o financiamento: lead
+  Procurava imóvel pronto: lead
+  Procurava aluguel: lead
+  Comprou com outra imobiliária: comercial
+  Não gostou do imóvel na visita: comercial
+  Financiamento negado: externo
+
+perguntas_aderencia:
+  - Quem comprou até agora (perfil financeiro, onde mora, o que faz, o que motivou a compra)?
+  - O imóvel é para moradia ou investimento?
+  - O fluxo de pagamento é flexível? Essas facilidades podem ser comunicadas?
+  - Qual o histórico da construtora (entrega no prazo, reclamações)? A reputação é um ativo ou um obstáculo?
+  - Como estão as vendas do empreendimento no plantão, no corpo a corpo e na indicação?
+  - É alto padrão? Alto padrão raramente converte via tráfego frio.

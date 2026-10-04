@@ -44,11 +44,15 @@ Kommo: lead criado ou mudou de etapa
 crm:
   tipo: kommo
   subdominio: "imobiliaria-exemplo"     # https://<subdominio>.kommo.com
-  mapa_eventos:                         # IDs mudam em cada conta — copiar do Kommo
+  sla_primeiro_contato_min: 30          # prazo do time comercial do cliente para o primeiro contato
+  mapa_eventos:                         # funil padrão da Trilha; IDs mudam em cada conta — copiar do Kommo
     - { pipeline_id: 1111, status_id: 2222, evento: lead }
+    - { pipeline_id: 1111, status_id: 2223, evento: em_atendimento }
     - { pipeline_id: 1111, status_id: 3333, evento: lead_qualificado }
     - { pipeline_id: 1111, status_id: 4444, evento: agendamento }
-    # 142 (venda ganha) → venda e 143 (perdida) → desqualificado já são padrão
+    - { pipeline_id: 1111, status_id: 4445, evento: comparecimento }
+    - { pipeline_id: 1111, status_id: 4446, evento: proposta }
+    # 142 (venda ganha) → venda e 143 (perdida) → perdido já são padrão
   campos:                               # nome do campo personalizado no Kommo
     gclid: "gclid"
     gbraid: "gbraid"
@@ -60,9 +64,26 @@ crm:
     utm_campaign: "utm_campaign"
     utm_content: "utm_content"          # recebe o nome do anúncio na taxonomia
     codigo_criativo: "codigo_criativo"  # código curto da mensagem do WhatsApp
-    corretor: "corretor"
-    motivo_perda: "motivo_perda"
+    motivo_perda: "motivo_perda"        # só se a conta não usar os motivos de perda nativos
 ```
+
+## 3.1 Funil padrão no Kommo (todo cliente, qualquer segmento)
+
+| Ordem | Etapa (nome pode seguir o segmento) | Evento |
+|---|---|---|
+| 1 | Novo lead | `lead` |
+| 2 | Em atendimento (primeiro contato feito) | `em_atendimento` |
+| 3 | Qualificado | `lead_qualificado` |
+| 4 | Reunião / visita / consulta agendada | `agendamento` |
+| 5 | Reunião / visita / consulta realizada | `comparecimento` |
+| 6 | Proposta enviada | `proposta` |
+| — | Venda ganha (142) | `venda` |
+| — | Perdida (143) | `perdido` |
+
+- **Motivos de perda:** usar os motivos nativos do Kommo, com a lista padrão do playbook do segmento (`motivos_perda`), **obrigatórios** ao mover para "perdida". A trilha-api lê o motivo do lead (`with=loss_reason`); o raio-x classifica a perda pela categoria do motivo (lead, atendimento, comercial, externo) e pelo momento (antes ou depois da qualificação). Motivo fora da lista aparece como "não classificado" no relatório.
+- **Responsável:** todo lead com responsável (corretor/atendente). O raio-x sai também por responsável.
+- **Contatos registrados:** mensagens e ligações feitas pelo Kommo, para medir a cadência (tentativas de contato por lead).
+- **Histórico de etapas:** a coleta diária (W02) lê, pela API de eventos do Kommo, quando cada lead entrou em cada etapa e as tentativas de contato, e monta o histórico que o raio-x usa. Conferir na conta do cliente quais tipos de evento de contato estão disponíveis.
 
 ## 4. Campos personalizados padrão (criar em todo cliente)
 
@@ -75,25 +96,27 @@ crm:
 | `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term` | texto | landing |
 | `codigo_criativo` | texto | Salesbot lendo o código da mensagem pré-preenchida |
 | `origem` | lista | padronizada: meta, google, portal_zap, portal_vivareal, portal_olx, indicacao, organico, lista |
-| `corretor` | usuário/lista | distribuição de leads |
-| `motivo_perda` | lista | obrigatório ao mover para "perdido" — alimenta as objeções da oferta |
+| `motivo_perda` | lista | só se a conta não usar os motivos de perda nativos do Kommo |
+
+O valor do negócio (campo "venda" do lead) deve ser o valor de venda — VGV no imobiliário. É ele que o raio-x soma como valor vendido.
 
 ## 5. Regras de envio
 
 - **Deduplicação:** `event_id = kommo-<lead_id>-<evento>`; o mesmo lead voltando à mesma etapa não gera evento novo na plataforma.
 - **Sem identificador, sem envio para aquela plataforma:** sem `gclid`/`gbraid`/`wbraid` e sem e-mail/telefone, não há envio ao Google; para o Meta, é preciso ao menos um entre `ctwa_clid`, `meta_lead_id`, `fbc` ou dado de contato em hash.
-- **Eventos de uso interno** (`desqualificado`, `reativado`) são registrados mas não enviados, salvo configuração explícita em `conversao.destinos`.
-- **Atraso:** o Google aceita conversões offline dentro da janela da ação de conversão (normalmente até 90 dias após o clique); eventos mais antigos são registrados e não enviados.
+- **Eventos de uso interno** (`em_atendimento`, `proposta`, `perdido`, `reativado`) alimentam o raio-x e não vão às plataformas, salvo configuração explícita em `conversao.destinos`.
+- **Ciclo longo:** o Google aceita conversões offline até 90 dias depois do clique. Lead criado há mais de 90 dias não é enviado ao Google; o motivo fica registrado como informativo e a venda conta no relatório pela atribuição do Kommo (UTMs do lead).
 - **Limite de requisições da API do Kommo:** as leituras de lead passam por uma fila com backoff; a documentação oficial do Kommo define o limite vigente.
 - **Falha nunca é silenciosa:** envio com erro vai para `fila_envios` com nova tentativa; três falhas seguidas viram alerta operacional.
 
-## 6. Funcionalidades extras sobre os dados do Kommo
+## 6. O que sai dos dados do Kommo
 
-| Funcionalidade | Para quê |
+| Dado | Onde aparece |
 |---|---|
-| Tempo até o primeiro contato por corretor/atendente do cliente | bloco "funil do cliente" do dossiê e bloco "leads" do relatório |
-| Taxa de qualificação por corretor × por campanha | separa problema de atendimento de problema de mídia |
-| Motivos de perda por oferta | pacote de briefing e bloco "leads" do relatório |
+| Raio-x do funil: etapa por etapa, primeiro contato, cadência, perdas por categoria, maior vazamento | dossiê, relatório semanal, pacote da reunião, painel ([raio-x do funil](../raio-x-do-funil.md)) |
+| Marketing entregou × comercial converteu | relatório semanal e pacote da reunião |
+| Vendas e valor vendido por campanha e criativo (atribuição pelo Kommo) | relatório semanal, pacote da reunião, pacote de briefing |
+| Motivos de perda por oferta | pacote de briefing |
 | Divergência plataforma × Kommo | ponto de atenção no dossiê (urgência se > 50%) |
 
 Reativação de leads frios e nutrição são fluxos de CRM — ferramenta paralela.

@@ -13,7 +13,13 @@ from typing import Annotated, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-Evento = Literal["lead", "lead_qualificado", "agendamento", "venda", "desqualificado", "reativado"]
+# Funil padrão da Trilha, igual para todos os segmentos (o playbook só muda os nomes exibidos).
+ETAPAS_FUNIL = ("lead", "em_atendimento", "lead_qualificado", "agendamento", "comparecimento", "proposta", "venda")
+Etapa = Literal["lead", "em_atendimento", "lead_qualificado", "agendamento", "comparecimento", "proposta", "venda"]
+Evento = Literal[
+    "lead", "em_atendimento", "lead_qualificado", "agendamento", "comparecimento", "proposta", "venda",
+    "perdido", "reativado",
+]
 ModeloReceita = Literal["venda_direta", "comissao", "recorrencia"]
 DiaUtil = Literal["segunda", "terca", "quarta", "quinta", "sexta"]
 Fracao = Annotated[float, Field(gt=0, le=1)]
@@ -116,12 +122,13 @@ class Crm(_Base):
     subdominio: str
     mapa_eventos: list[MapaEvento] = Field(default_factory=list)
     campos: dict[str, str] = Field(default_factory=dict)
+    sla_primeiro_contato_min: Positivo = 30  # do time comercial do cliente com o lead
 
     def mapa_completo(self) -> list[MapaEvento]:
         """Mapa do cliente + padrões das etapas de sistema do Kommo (o do cliente tem prioridade)."""
         mapa = list(self.mapa_eventos)
         configurados = {m.status_id for m in mapa}
-        for status, evento in ((KOMMO_STATUS_GANHO, "venda"), (KOMMO_STATUS_PERDIDO, "desqualificado")):
+        for status, evento in ((KOMMO_STATUS_GANHO, "venda"), (KOMMO_STATUS_PERDIDO, "perdido")):
             if status not in configurados:
                 mapa.append(MapaEvento(status_id=status, evento=evento))
         return mapa

@@ -39,11 +39,14 @@ plataformas:
 crm:
   tipo: kommo
   subdominio: imobiliaria-exemplo
-  mapa_eventos:
+  sla_primeiro_contato_min: 30    # do time comercial do cliente com o lead
+  mapa_eventos:                   # etapas padrão da Trilha (docs/raio-x-do-funil.md); 142 e 143 já são padrão
     - { pipeline_id: 1111, status_id: 2222, evento: lead }
+    - { pipeline_id: 1111, status_id: 2223, evento: em_atendimento }
     - { pipeline_id: 1111, status_id: 3333, evento: lead_qualificado }
     - { pipeline_id: 1111, status_id: 4444, evento: agendamento }
-    - { pipeline_id: 1111, status_id: 5555, evento: reativado }
+    - { pipeline_id: 1111, status_id: 4445, evento: comparecimento }
+    - { pipeline_id: 1111, status_id: 4446, evento: proposta }
   campos:
     gclid: gclid
     gbraid: gbraid
@@ -55,6 +58,7 @@ crm:
     utm_campaign: utm_campaign
     utm_content: utm_content
     codigo_criativo: codigo_criativo
+    motivo_perda: motivo_perda    # só se a conta não usar os motivos de perda nativos do Kommo
 
 conversao:
   eventos_semana_aprendizado: 50
@@ -62,8 +66,9 @@ conversao:
     lead:             { meta_event_name: Lead,             google_conversion_action_id: "900000001", valor: ponderado }
     lead_qualificado: { meta_event_name: LeadQualificado,  google_conversion_action_id: "900000002", valor: ponderado }
     agendamento:      { meta_event_name: Schedule,         google_conversion_action_id: "900000003", valor: ponderado }
+    comparecimento:   { meta_event_name: VisitaRealizada }
     venda:            { meta_event_name: Purchase,         google_conversion_action_id: "900000004", valor: receita }
-    # desqualificado e reativado: uso interno, sem destino
+    # em_atendimento, proposta e perdido: uso interno (raio-x do funil), sem destino
 
 # Freio de emergência: a única ação automática (ADR-006).
 freio:

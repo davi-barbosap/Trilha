@@ -7,27 +7,29 @@ O sistema entra em operação num cliente piloto, é testado na prática e depoi
 
 ## Pronto
 
-- ✅ Esquema validado do `perfil.yaml` (agenda do material, freio, mapa de eventos do Kommo)
+- ✅ Esquema validado do `perfil.yaml` (agenda do material, freio, mapa de eventos do Kommo) e das ofertas, com o diagnóstico de aderência
+- ✅ Funil padrão para todos os segmentos (`playbooks/padrao/`) e playbook imobiliário com nomes, referências e motivos de perda
+- ✅ **Raio-x do funil**: etapa por etapa, primeiro contato, cadência, perdas por categoria e momento, maior vazamento, marketing entregou × comercial converteu, atribuição pelo Kommo (`python -m trilha raio-x`, `POST /funil/raio-x`)
 - ✅ Calculadora de economia unitária (CAC, CPL e CPL qualificado máximos, verba por degrau)
 - ✅ Leitura do Kommo com confirmação da etapa real do lead
 - ✅ Conversões para o Meta (API de Conversões v26.0) e para o Google (Data Manager API), com hash e deduplicação
 - ✅ Regras do freio de emergência
-- ✅ trilha-api: `/saude`, `/clientes`, `/validar`, `/calcular`, `/conversao`, `/freio/avaliar`, com segredo de webhook por cliente
+- ✅ trilha-api: `/saude`, `/clientes`, `/validar`, `/calcular`, `/conversao`, `/freio/avaliar`, `/funil/raio-x`, com segredo de webhook por cliente
 - ✅ Fluxos-modelo do n8n: W01 (conversão real) e W10 (vigia de falhas)
 - ✅ Infraestrutura descrita em `infra/` (n8n 2.x, Postgres, Redis, trilha-api, HTTPS, backup)
-- ✅ 42 testes e verificação automática no GitHub
+- ✅ 61 testes e verificação automática no GitHub
 
 ## Para entrar em operação
 
 | # | Item | Material que passa a ficar pronto | Pronto quando | Status |
 |---|---|---|---|---|
 | 1 | **Servidor autohospedado** do n8n + **W10** vigia de falhas | — (base) | `/saude` responde; uma falha forçada chega no Slack; um backup é restaurado | 🟡 tudo escrito; falta o servidor |
-| 2 | **W01** conversão real no piloto (Meta) | todos | `lead_qualificado` aparece no Gerenciador de Eventos, primeiro com `META_TEST_EVENT_CODE`, depois em produção | 🟡 falta importar e ligar no Kommo do piloto |
-| 3 | Envio ao Google (Data Manager API) + **W02** coleta diária | dossiê, relatório | `validateOnly` aceito, depois envio real; dados do dia anterior disponíveis às 05:30 | 🟡 payload pronto |
+| 2 | **Kommo do piloto no padrão** (funil padrão, motivos de perda nativos obrigatórios, responsável, campos de rastreamento) + **W01** conversão real (Meta) | todos | `lead_qualificado` aparece no Gerenciador de Eventos, primeiro com `META_TEST_EVENT_CODE`, depois em produção | 🟡 falta configurar o Kommo do piloto e importar o W01 |
+| 3 | Envio ao Google (Data Manager API) + **W02** coleta diária, incluindo o **histórico de etapas e tentativas de contato do Kommo** que alimenta o raio-x | dossiê, relatório | `validateOnly` aceito, depois envio real; raio-x do piloto gerado com dados reais às 05:30 | 🟡 payload e cálculo do raio-x prontos; falta a coleta |
 | 4 | **W03** urgências + freio, **W04** pacing, **W05** leitura diária | monitoramento | uma pausa de teste com aviso e desfazer; leitura diária no Slack às 07:30 | 🟡 regra do freio pronta |
-| 5 | **W12** dossiê de otimização + histórico de alterações | otimização semanal | o assessor faz a sessão do piloto só com o dossiê | ⬜ |
+| 5 | **W12** dossiê de otimização (com o raio-x da semana) + histórico de alterações | otimização semanal | o assessor faz a sessão do piloto só com o dossiê | ⬜ |
 | 6 | **W06** execução do aprovado (ClickUp) | otimização semanal | uma mudança aprovada é executada e desfeita em teste | ⬜ |
-| 7 | **W07** números do relatório semanal | relatório semanal | relatório do piloto com os três blocos (leads · criativos · ações) na véspera | ⬜ |
+| 7 | **W07** números do relatório semanal | relatório semanal | relatório do piloto na véspera, com marketing entregou × comercial converteu, perdas por categoria, criativos e ações | ⬜ |
 | 8 | **W08** pacote de dados do briefing | briefing de criativo | um briefing do piloto escrito sobre o pacote | ⬜ |
 | 9 | **W11** pacote da reunião + **W14** painel da carteira | reunião mensal, alinhamento com a equipe | uma reunião preparada em ≤ 15 min; painel na véspera da reunião de equipe | ⬜ |
 | 10 | Entrada dos demais clientes | tudo | perfis válidos em `/clientes`; material de todos chegando na véspera | ⬜ |
