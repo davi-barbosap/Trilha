@@ -9,9 +9,9 @@ from dataclasses import asdict
 
 from pydantic import ValidationError
 
-from trilha.core.economia import calcular
 from pathlib import Path
 
+from trilha.core.economia import calcular
 from trilha.core.oferta import carregar_oferta
 from trilha.core.perfil import ETAPAS_FUNIL, avisos_legado, carregar_perfil
 
@@ -48,6 +48,21 @@ def cmd_validar(args) -> int:
         faltando = [e for e in ETAPAS_FUNIL if e not in mapeadas]
         if faltando:
             print("Atenção: etapas do funil sem etapa do Kommo (o raio-x fica incompleto): " + ", ".join(faltando))
+    if perfil.crm:
+        from trilha.core.playbook import carregar_playbook
+
+        lista = carregar_playbook(perfil.cliente.segmento).motivos_perda
+        for m in perfil.crm.mapa_eventos:
+            if m.motivo and m.motivo not in lista:
+                print(f"Atenção: motivo '{m.motivo}' (etapa {m.status_id}) não está na lista de motivos do playbook")
+        if any(f.papel == "nutricao" and f.ganho_significa is None for f in perfil.crm.funis):
+            print("Atenção: funil de nutrição sem ganho_significa — o ganho (142) dele não gera evento")
+    correcoes = Path(args.perfil).resolve().parent / "correcoes.yaml"
+    if correcoes.is_file():
+        from trilha.core.correcoes import carregar_correcoes
+
+        c = carregar_correcoes(correcoes)
+        print(f"Correções confirmadas: {len(c.excluir)} exclusão(ões), {len(c.data_da_venda)} data(s) de venda corrigida(s)")
     for arquivo in sorted((Path(args.perfil).resolve().parent / "ofertas").glob("*.yaml")):
         oferta = carregar_oferta(arquivo)
         print(f"Oferta '{oferta.oferta.nome}': OK")
@@ -63,14 +78,15 @@ def _pct(v: float | None) -> str:
 
 
 def cmd_raio_x(args) -> int:
+    from trilha.core.correcoes import aplicar_correcoes, carregar_correcoes
     from trilha.core.funil import LeadFunil, raio_x
     from trilha.core.playbook import carregar_playbook
 
     perfil = carregar_perfil(args.perfil)
     with open(args.leads, encoding="utf-8") as f:
         leads = [LeadFunil.model_validate(x) for x in json.load(f)]
-    sla = perfil.crm.sla_primeiro_contato_min if perfil.crm else 30
-    r = raio_x(leads, carregar_playbook(perfil.cliente.segmento), args.investimento, sla)
+    leads = aplicar_correcoes(leads, carregar_correcoes(Path(args.perfil).parent / "correcoes.yaml"))
+    r = raio_x(leads, carregar_playbook(perfil.cliente.segmento), args.investimento, crm=perfil.crm)
     if args.json:
         print(json.dumps(r, ensure_ascii=False, indent=2, default=str))
         return 0
@@ -87,8 +103,8 @@ def cmd_raio_x(args) -> int:
         conv = f" · {_pct(e['conversao_da_anterior'])} da anterior{ref}" if e["conversao_da_anterior"] is not None else ""
         print(f"  {e['rotulo']:<18} {e['entraram']:>5}{conv}{tempo}")
     pc = r["primeiro_contato"]
-    print(f"\nPrimeiro contato: mediana {_num(pc['mediana_minutos'])} min · {_pct(pc['dentro_do_sla'])} dentro de {pc['sla_minutos']:g} min"
-          f" · {pc['sem_primeiro_contato']} leads sem primeiro contato")
+    print(f"\nPrimeiro contato: mediana {_num(pc['mediana_minutos_uteis'])} min úteis ({_num(pc['mediana_minutos_corridos'])} corridos)"
+          f" · {_pct(pc['dentro_do_sla'])} dentro de {pc['sla_minutos']:g} min úteis · {pc['sem_primeiro_contato']} leads sem primeiro contato")
     cad = r["cadencia"]
     print(f"Cadência: perdidos antes de qualificar tiveram mediana de {_num(cad['mediana_tentativas_perdidos_antes_de_qualificar'])} tentativa(s);"
           f" qualificados, {_num(cad['mediana_tentativas_qualificados'])}")
@@ -116,9 +132,11 @@ def cmd_raio_x(args) -> int:
               " custo por venda é teto e retorno é piso")
     print("\nPor responsável:")
     for nome, d in r["por_responsavel"].items():
-        print(f"  {nome:<14} {d['leads']:>4} leads · primeiro contato {_num(d['mediana_minutos_primeiro_contato'])} min ({_pct(d['dentro_do_sla'])} no prazo)"
+        print(f"  {nome:<14} {d['leads']:>4} leads · primeiro contato {_num(d['mediana_minutos_uteis_primeiro_contato'])} min úteis ({_pct(d['dentro_do_sla'])} no prazo)"
               f" · {d['vendas']} vendas")
-        if not d["amostra_suficiente"]:
+        if "perfil" in d:
+            print(f"                 perfil {d['perfil']} (100 = melhor do time no período)")
+        elif not d["amostra_suficiente"]:
             print("                 (amostra pequena para comparar)")
     if r["por_closer"]:
         print("\nPor closer:")

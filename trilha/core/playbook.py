@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from trilha.core.perfil import Etapa
 
-CategoriaPerda = Literal["lead", "atendimento", "comercial", "externo"]
+CategoriaPerda = Literal["lead", "atendimento", "comercial", "externo", "duplicado"]
 Fracao = Annotated[float, Field(gt=0, le=1)]
 
 RAIZ_PLAYBOOKS = Path(os.environ.get("TRILHA_PLAYBOOKS_DIR", Path(__file__).resolve().parents[2] / "playbooks"))

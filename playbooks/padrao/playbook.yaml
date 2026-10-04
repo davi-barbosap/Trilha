@@ -18,6 +18,7 @@ taxas_referencia: {}
 #   atendimento velocidade, cadência e condução do time comercial do cliente
 #   comercial   proposta, negociação e fechamento
 #   externo     fora do controle de marketing e comercial
+#   duplicado   o mesmo lead cadastrado de novo: qualidade de dado, fica fora das perdas
 motivos_perda:
   Contato inválido: lead
   Sem interesse no produto: lead
@@ -32,6 +33,7 @@ motivos_perda:
   Desistiu após a proposta: comercial
   Crédito ou financiamento negado: externo
   Adiou a decisão: externo
+  Lead duplicado: duplicado
 
 perguntas_aderencia:
   - Quem comprou até agora (perfil financeiro, onde mora, o que faz, o que motivou a compra)?

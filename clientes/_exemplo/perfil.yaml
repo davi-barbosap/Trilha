@@ -39,7 +39,16 @@ plataformas:
 crm:
   tipo: kommo
   subdominio: imobiliaria-exemplo
-  sla_primeiro_contato_min: 30    # do time comercial do cliente com o lead
+  sla_primeiro_contato_min: 30    # do time comercial do cliente com o lead, em minutos de expediente
+  horario_comercial: { dias: [0, 1, 2, 3, 4, 5], inicio: 8, fim: 20, fuso_utc: -3 }   # 0 = segunda; plantão de sábado
+  dias_parado: 15                 # lead ativo sem movimentação há mais de 15 dias = parado
+  dias_base_velha: 30
+  baldes: [Imobiliária Exemplo]   # usuário da empresa: recebe leads, mas não é pessoa do time
+  gestores: []                    # aparecem no raio-x, fora da média e dos sinais por pessoa
+  origens:                        # apelidos de origem deste cliente, antes da regra geral
+    trilha-performance: Meta Ads
+  # Tags do Kommo lidas pelo raio-x (padrão em trilha/core/perfil.py, TagsCrm). Só declarar o que for diferente:
+  # tags: { comparecimento: [reunião-realizada], reativado: [lead reativado] }
   # Papel de cada funil do Kommo. O "ganho" (142) muda de sentido: no Closer é venda, no SDR costuma ser
   # reunião realizada. Conta com SDR + Closer:
   #   - { pipeline_id: 1110, nome: SDR, papel: entrada, ganho_significa: comparecimento }
@@ -54,6 +63,10 @@ crm:
     - { pipeline_id: 1111, status_id: 4444, evento: agendamento }
     - { pipeline_id: 1111, status_id: 4445, evento: comparecimento }
     - { pipeline_id: 1111, status_id: 4446, evento: proposta }
+    # Etapas de saída que não são o 143 encerram o lead com motivo (senão viram "leads parados"):
+    - { pipeline_id: 1111, status_id: 5551, evento: perdido, motivo: Contato inválido }                       # Descartado
+    - { pipeline_id: 1111, status_id: 5552, evento: perdido, motivo: Não respondeu às tentativas de contato }  # Frio
+    - { pipeline_id: 1111, status_id: 5553, evento: reativado }
   campos:
     gclid: gclid
     gbraid: gbraid

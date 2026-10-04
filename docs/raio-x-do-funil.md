@@ -33,26 +33,30 @@ Etapas puladas contam como passadas: um lead que foi de "qualificado" direto par
 
 ### Vários funis no Kommo
 
-Operações reais usam mais de um funil: **SDR** (entrada), **Closer** (fechamento), **Nutrição**, **base importada** e **teste**. Cada um é cadastrado em `crm.funis` com seu papel. O "ganho" (142) muda de sentido: no Closer é venda; no SDR costuma ser reunião realizada (`ganho_significa: comparecimento`). Base e teste não geram evento nem entram em leads e CPL. Funil não cadastrado não gera evento.
+Operações reais usam mais de um funil: **SDR** (entrada), **Closer** (fechamento), **Nutrição**, **base importada** e **teste**. Cada um é cadastrado em `crm.funis` com seu papel. O "ganho" (142) muda de sentido: no Closer é venda; no SDR costuma ser reunião realizada (`ganho_significa: comparecimento`); na Nutrição só conta com `ganho_significa` explícito. Base e teste não geram evento nem entram em leads e CPL. Funil não cadastrado não gera evento.
+
+Etapas que encerram o lead sem ser o 143 ("Descartado", "Frio") são mapeadas como `perdido` com um motivo; sem isso, o lead fica contado como ativo e vira "parado".
 
 ## O que o raio-x mostra
 
 | Bloco | Conteúdo |
 |---|---|
-| **Etapa por etapa** | quantos chegaram a cada etapa, conversão da etapa anterior, referência do segmento e tempo mediano entre etapas |
-| **Primeiro contato** | tempo mediano até o primeiro contato, % dentro do prazo (`crm.sla_primeiro_contato_min`), leads que nunca foram contatados |
+| **Etapa por etapa** | quantos chegaram a cada etapa, conversão da etapa anterior, referência do segmento e tempo mediano entre etapas; etapa confirmada só por tag (ex.: `reunião-realizada`) conta sem inventar data |
+| **Primeiro contato** | tempo mediano até a primeira mensagem **de uma pessoa** (o bot não conta), em minutos de expediente e corridos; % dentro do prazo (`crm.sla_primeiro_contato_min`, em expediente); tempo de quem chegou dentro e fora do horário; leads que nunca foram contatados |
+| **Chegada dos leads** | mapa dia da semana × hora, % fora do horário comercial, à noite e no fim de semana, pico |
 | **Cadência** | tentativas de contato dos leads perdidos antes de qualificar × dos qualificados |
-| **Perdas** | por etapa e por categoria (lead, atendimento, comercial, externo, sem motivo); qualificados perdidos por motivo de lead = **critério de qualificação a revisar** |
+| **Perdas** | por etapa e por categoria (lead, atendimento, comercial, externo, sem motivo); qualificados perdidos por motivo de lead = **critério de qualificação a revisar**; "lead duplicado" sai das perdas e vai para qualidade dos dados |
 | **Maior vazamento** | a passagem abaixo da referência que mais custa vendas, com o valor em R$ |
-| **Marketing entregou × comercial converteu** | leads, qualificados e agendamentos com custo de cada um × prazo de primeiro contato, comparecimento, propostas, vendas e perdas de atendimento e comerciais |
-| **Resultado** | vendas, valor vendido (VGV no imobiliário), retorno sobre o investimento, custo por comparecimento, custo por venda; o CPL aparece só como diagnóstico |
-| **Por responsável** | o mesmo raio-x por SDR/corretor do time do cliente; baldes do sistema ("DESCARTE", "sem corretor") ficam fora; quem tem menos de 20 leads é marcado como amostra pequena |
+| **Marketing entregou × comercial converteu** | leads, qualificados e agendamentos com custo de cada um × prazo de primeiro contato, comparecimento, propostas, vendas, conversões SDR e Closer, ciclo de vendas, perdas de atendimento e comerciais |
+| **Resultado** | vendas, valor vendido (VGV no imobiliário), ticket (só vendas com valor), retorno sobre o investimento, custo por reunião (piso, todas as reuniões) e o de mídia paga, custo por venda; o CPL aparece só como diagnóstico, sobre o investimento de captação |
+| **Por responsável** | o mesmo raio-x por SDR/corretor do time do cliente: primeiro contato, perdas sem motivo, parados e carteira parada, distribuição de leads contra a média do time e o **perfil** (0–100, relativo ao melhor do time, só com amostra de 20+ leads); baldes do sistema e do cliente ficam fora; gestores aparecem fora da média |
 | **Por closer** | comparecimentos → propostas → vendas, quando o fechamento é de outra pessoa (amostra mínima: 5 reuniões) |
-| **Por canal, campanha e score** | leads, qualificados, comparecimentos, vendas e valor, atribuídos pelo Kommo; canal "Não rastreado" à parte; funil por lead score (A, B, C…) |
-| **Pré-atendimento** | % que concluiu o bot, % que nem iniciou, % dos não qualificados que interagiram com um humano |
-| **Leads parados** | leads ativos sem movimentação há mais de 15 dias, por responsável |
-| **Qualidade dos dados** | leads e vendas duplicados removidos, perdas sem motivo, motivos fora da lista, leads não rastreados, leads sem responsável |
-| **Sinais** | regras fixas: perdas de atendimento acima de 30% antes da qualificação → resgatar a base antes de aumentar volume; mais de 20% das perdas sem motivo; mais de 20% sem canal; qualificados perdidos por motivo de lead; leads parados |
+| **Por canal, campanha e score** | leads, qualificados, comparecimentos, vendas e valor, atribuídos pelo Kommo; canal "Não rastreado" à parte; funil por lead score com o grupo "sem score" |
+| **Pré-atendimento** | % concluído, incompleto e não iniciado no bot, a qualificação de cada grupo, % dos não qualificados que interagiram com um humano |
+| **Reativação** | leads reativados, quantos chegaram a agendamento, vendas e valor |
+| **Leads parados** | leads ativos sem movimentação há mais de `crm.dias_parado` dias (padrão 15), por responsável, com os sem responsável marcados; base velha acima de `crm.dias_base_velha` |
+| **Qualidade dos dados** | leads e vendas duplicados removidos, perdas marcadas como duplicado, vendas sem valor, perdas sem motivo, motivos fora da lista (e quantos distintos), leads não rastreados, leads sem responsável |
+| **Sinais** | regras fixas que registram o fato e o número, sem prescrever: perdas de atendimento acima de 30% antes da qualificação → resgatar a base antes de aumentar volume e revisar o primeiro contato; mais de 20% das perdas sem motivo; 8+ motivos distintos fora da lista; mais de 20% sem canal; mais de 20% sem responsável; vendas sem valor; qualificados perdidos por motivo de lead; leads parados; 10+ em base velha; 40%+ dos ativos parados numa etapa; 40%+ dos leads fora do horário; pessoa com 10+ leads e nenhum qualificado; pessoa com qualificação abaixo da metade da média; distribuição desequilibrada |
 
 ## Perdas: de quem é
 
@@ -106,13 +110,14 @@ O raio-x mede o time comercial **do cliente** (corretores, atendentes, SDRs) ate
 ## Padrão no Kommo (contrato)
 
 O raio-x só é tão bom quanto o Kommo que o alimenta. Em todo cliente:
-1. Funil com as etapas padrão (os nomes podem seguir o segmento), mapeadas em `crm.mapa_eventos`.
+1. Funil com as etapas padrão (os nomes podem seguir o segmento), mapeadas em `crm.mapa_eventos`, incluindo as etapas de saída que não são o 143.
 2. Motivos de perda **nativos do Kommo** com a lista padrão do playbook, obrigatórios ao mover para "perdido".
-3. Responsável preenchido em todo lead.
-4. Contatos (mensagens e ligações) registrados no Kommo, para a cadência ser medida.
+3. Responsável preenchido em todo lead; o usuário da empresa cadastrado em `crm.baldes`.
+4. Mensagens e ligações registradas no Kommo, para o primeiro contato humano e a cadência serem medidos.
 5. UTMs gravadas no lead na entrada.
+6. Tags do pré-atendimento, de reunião e de reativação com os nomes de `crm.tags` (o padrão já reconhece os nomes reais da operação).
 
-Detalhes em [Kommo](integracoes/kommo.md).
+Detalhes em [Kommo](integracoes/kommo.md). Correções confirmadas com o cliente ficam em `clientes/<id>/correcoes.yaml`.
 
 ## Uso
 

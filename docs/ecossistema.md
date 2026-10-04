@@ -29,7 +29,7 @@ O Trilha não constrói essas ferramentas, mas depende do que elas gravam. Sem i
 
 | Ferramenta paralela | Precisa entregar ao Trilha | Por quê |
 |---|---|---|
-| **Landing pages** | campos ocultos com `gclid`, `gbraid`, `wbraid`, `fbclid` e UTMs, gravados nos campos personalizados do lead no Kommo ([Kommo](integracoes/kommo.md) §4) | sem o identificador de clique, a venda não volta para o Google/Meta |
+| **Landing pages** | campos ocultos com `gclid`, `gbraid`, `wbraid`, `fbclid` e as 5 UTMs, gravados nos campos personalizados do lead no Kommo ([Kommo](integracoes/kommo.md) §4), mesmo quando o envio passa por um webhook intermediário (Make); payload com esquema fixo (todas as chaves, vazias quando não houver); telefone em E.164 sem duplicar o DDI; hora do clique (`capturado_em`); evento de lead só depois do recebimento confirmado, com `event_id` compartilhado com o servidor; botão de WhatsApp com código de criativo na mensagem pré-preenchida | sem o identificador de clique, a venda não volta para o Google/Meta; sem código no WhatsApp, o lead do botão chega sem atribuição |
 | **BotConversa** | quando atender a conversa vinda de anúncio de clique para WhatsApp, repassar o `ctwa_clid` e as UTMs ao lead no Kommo; mover o lead nas etapas padronizadas | sem o `ctwa_clid`, a qualificação da conversa não volta para o Meta |
 | **GA4 / GTM** | tag do Google e pixel do Meta funcionando nas páginas; eventos de conversão do site; `event_id` compartilhado entre pixel e servidor quando houver API de Conversões no site | o freio de emergência usa "horas sem evento de conversão"; deduplicação no Meta |
 | **Fluxos de CRM (Kommo)** | funil com as etapas padrão; motivos de perda nativos do Kommo com a lista padrão, obrigatórios; responsável em todo lead; contatos registrados no Kommo ([raio-x do funil](raio-x-do-funil.md), contrato) | sem isso não há raio-x: não dá para saber onde está o vazamento nem de quem é a perda |
@@ -45,8 +45,10 @@ Mudou uma etapa no Kommo, um campo oculto da página ou o fluxo do BotConversa? 
 | Painéis de mensuração por cliente (`mensuracao-ibr`, `mensuracao-mme`, `maia-dash`, `ni-report`, `*-report`) | camada de relatório publicada para o cliente; devem seguir o mesmo [dicionário de métricas](metricas.md) para os números baterem |
 | Painel de saúde da carteira (`trilha-painel`) | mesma função do painel da carteira; as regras de saúde das contas foram trazidas para cá (`saude.py`) |
 | Ranking de corretores (`ranking-corretores-lion`) | painel de TV para o cliente; usa as mesmas ideias de leads parados e perfil comparativo |
-| Rotinas de tags no Kommo (estado do bot, `Interagiu`) | automação de CRM; o raio-x lê as tags |
-| Landing pages (`bossa-site`) | cumprem o contrato de rastreamento: first-touch por sessão, esquema fixo no payload |
+| Rotinas de tags no Kommo (estado do bot, `Interagiu`) | automação de CRM (GitHub Actions do IBR e do IMR, com simulação antes de gravar e log para desfazer); o raio-x lê as tags com os nomes reais ([Kommo](integracoes/kommo.md) §3.2) |
+| Salesbots e fluxos do pré-atendimento (`briefing-trilha`, `mensuracao-mme/bot-flows`) | aplicam as tags e etapas que o raio-x lê (Interesse Confirmado, lead frio, não-cadastrou, reativado, bot-*) |
+| Disparos (Mailchimp no IMR) | disparo em massa; fora do escopo |
+| Landing pages (`bossa-site`, LPs do `mensuracao-mme`) | o `bossa-site` cumpre a captura (UTMs, `gclid`, `gbraid`, `wbraid`, `fbclid`, esquema fixo, `generate_lead` só após o webhook confirmar). A regra real é "o último clique com campanha na sessão vence, e a navegação orgânica depois não apaga", guardada em `sessionStorage` (não atravessa sessões). Faltam `event_id` compartilhado, código de criativo no WhatsApp e Consent Mode. As LPs do IMR não gravam identificadores de clique nem UTMs em campo próprio, e duas versões antigas não enviam o lead a lugar nenhum |
 | Briefing (`briefing-trilha`) | onboarding da oferta e fluxos do Kommo ([ADR-005](decisoes/005-dependencia-briefing-trilha.md)) |
 
 Origem detalhada de cada padrão: [origem dos padrões](origem-dos-padroes.md).

@@ -20,7 +20,7 @@ class TestCanal(unittest.TestCase):
     def test_valores_reais_do_campo_origem(self):
         casos = {"Meta+Ads": META, "Facebook": META, "instagram": META, "google": GOOGLE, "Google": GOOGLE,
                  "Fonte: Busca Paga | google": GOOGLE, "unknown": NAO_RASTREADO, "": NAO_RASTREADO,
-                 None: NAO_RASTREADO, "2026-06-17": NAO_RASTREADO, "(referral)": "Indicação",
+                 None: NAO_RASTREADO, "2026-06-17": NAO_RASTREADO, "(referral)": "Outro site", "Recomendação": "Indicação",
                  "chatgpt.com": "chatgpt.com", "TikTok": "TikTok", "podcast": "Podcast"}
         for origem, esperado in casos.items():
             self.assertEqual(normalizar_canal(origem), esperado, origem)

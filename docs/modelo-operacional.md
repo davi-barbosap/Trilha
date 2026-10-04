@@ -45,7 +45,8 @@ Responsabilidades e indicadores do cargo de Assessor de Marketing, e o que o sis
 | Pontos de atenção | 3 a 5 achados ordenados por R$ em jogo, cada um com os números que o sustentam e a simulação das ações possíveis |
 | Testes em andamento | amostra atual × mínima, previsão de conclusão |
 | Freio | o que foi pausado na semana e por quê |
-| Time comercial do cliente | primeiro contato, cadência e conversão por responsável; qualificados perdidos por motivo de lead (critério a revisar) |
+| Time comercial do cliente | primeiro contato (minutos de expediente, só mensagem humana), cadência, conversão, carteira parada e distribuição de leads por responsável; chegada dos leads fora do horário; qualificados perdidos por motivo de lead (critério a revisar) |
+| Mídia sem retorno | conjuntos e anúncios com gasto e nenhum lead na semana; anúncios reprovados ou com problema de entrega; idade de cada criativo ativo (data de criação no Meta) contra o ciclo do perfil |
 
 **O assessor** decide o que fazer. Mudanças simples (orçamento, pausar/ativar) ele marca na tarefa e o sistema executa, registra e guarda como desfazer. Campanhas e anúncios novos, ele cria.
 **Tempo-alvo:** 30–45 min por cliente.
@@ -67,7 +68,7 @@ Responsabilidades e indicadores do cargo de Assessor de Marketing, e o que o sis
 
 **Pacote de dados do briefing**, junto com o dossiê e sob demanda:
 - argumentos (eixos), públicos e formatos com melhor e pior resultado;
-- criativos que estão cansando;
+- criativos que estão cansando, por desempenho e por idade (dias no ar);
 - objeções e motivos de perda registrados no Kommo;
 - sinais de risco do diagnóstico de aderência da oferta (ex.: vendas fracas fora do digital pedem nutrição mais longa, prova social mais robusta e contorno de objeção já no criativo);
 - diferenciais e objeções da oferta (`ofertas/*.yaml`);
@@ -80,16 +81,17 @@ Responsabilidades e indicadores do cargo de Assessor de Marketing, e o que o sis
 
 **Pacote da reunião**, dois dias úteis antes, no formato do relatório mensal da Trilha:
 
-1. Resumo executivo (números; a leitura é do assessor)
-2. Funil por semana (w1–w4) e taxas de conversão contra a meta
-3. Indicadores financeiros: investimento, CPL (diagnóstico), CPL qualificado, CPO por canal, custo por venda (teto), retorno (piso), valor vendido
-4. Desempenho por público e por criativo
-5. Qualidade dos leads por score
-6. Vendas fechadas no mês e jornada de cada uma (canal, ciclo de vendas)
-7. Bloco "sem atribuição": vendas e leads não rastreados
+0. Conferência dos dados: fontes e data de cada coleta; conjuntos e anúncios com gasto e nenhum lead (e a % da verba); % sem score; vendas sem valor ou sem contato; duplicatas removidas; % sem atribuição; correções confirmadas aplicadas
+1. Resumo executivo (placar: leads, qualificados, reuniões agendadas e realizadas, propostas, vendas, investimento, valor vendido; a leitura é do assessor)
+2. Funil por semana (w1–w4) com as perdas de cada semana e as taxas contra a meta do cliente, dizendo a base de cada meta (÷ leads ou ÷ etapa anterior)
+3. Indicadores financeiros com as fórmulas: investimento, CPL (diagnóstico, sobre o investimento de captação), CPL qualificado, CPO por canal, custo por venda (teto), retorno (piso), valor vendido, ticket
+4. Desempenho por público, por criativo e por público × criativo, com a linha "sem atribuição"
+5. Qualidade dos leads por score, com "sem score"
+6. Vendas fechadas no mês e a jornada de cada uma no CRM (primeiro card → fechamento → venda, com datas e dias; canal)
+7. Bloco "sem atribuição": não rastreado e canais sem gasto medido, em linhas separadas
 8. Raio-x do funil do mês por campanha, por SDR e por closer
 9. Testes, decisões do mês e efeito
-10. Números de apoio para as recomendações (escalar · pausar · investigar) e para as metas do mês seguinte
+10. Números de apoio para as recomendações (escalar · pausar · investigar e corrigir dados) e para as metas do mês seguinte, incluindo a % de atribuição
 
 Definições em [métricas](metricas.md). Sai como documento ou slides para o assessor completar.
 
@@ -97,7 +99,7 @@ Definições em [métricas](metricas.md). Sai como documento ou slides para o as
 
 ### 3.5 Alinhamento com a equipe
 
-**Painel da carteira**, na véspera da reunião de equipe: semáforo por cliente (dentro da meta · atenção · crítico), **saúde das contas de anúncio** (status, dias de saldo pré-pago e recarga sugerida — P1 resolver hoje, P2 esta semana), maior vazamento de cada cliente, leads parados, freio acionado na semana, tarefas atrasadas por pessoa e criativos pendentes (lidos do ClickUp), tokens de integração perto de vencer.
+**Painel da carteira**, na véspera da reunião de equipe: semáforo por cliente (dentro da meta · atenção · crítico), **saúde das contas de anúncio** (status, dias de saldo pré-pago e recarga sugerida, anúncios com problema — P1 resolver hoje, P2 esta semana; um cliente pode ter várias contas), maior vazamento de cada cliente, leads parados (janela fixa de 45 dias), freio acionado na semana, tarefas atrasadas por pessoa e criativos pendentes (lidos do ClickUp), tokens de integração perto de vencer. Alertas de conta são do assessor; alertas técnicos (credencial recusada, conta fora do acesso, coleta ou material sem atualizar, coleta com zero leads quando o período anterior teve) são do responsável técnico. O painel confere o conteúdo, não só se o fluxo rodou: o painel antigo mostrava verde com zero leads e Meta vazio, e um token quebrado virava 23 avisos separados.
 
 ## 4. Freio de emergência
 
@@ -133,6 +135,7 @@ Horas do assessor por cliente por semana:
 - **8 clientes ≈ 30 h por semana** com o sistema, contra ~60 h sem ele.
 - **Teto saudável: cerca de 10 clientes por assessor.** O sistema corta o trabalho de levantar e organizar dados; o relacionamento e a execução criativa continuam tomando tempo, e é assim que deve ser.
 - Estimativas de partida, a confirmar com as horas medidas no cliente piloto.
+- A carteira de hoje (catálogo do `trilha-painel`): 23 clientes em dois assessores, um com 16 e outro com 7 (imobiliário 17, automotivo 3, hotelaria 3). O assessor com 16 está acima do teto mesmo com o sistema.
 
 ## 6. Agenda de referência para 8 clientes
 

@@ -4,6 +4,9 @@ oferta:
   tipo: empreendimento
   estagio: lançamento
   localizacao: { bairro: Vila Madalena, cidade_uf: São Paulo/SP, regiao: Zona Oeste }
+  construtora: Construtora Exemplo
+  tipologia: "2 quartos, 58 m², varanda gourmet"
+  plantas: "tipo A (58 m²) e tipo B (64 m², garden)"
 aderencia:                      # diagnóstico antes de anunciar — respostas do assessor
   perfil_compradores: "Casais de 28–40 anos, renda familiar de R$ 15–25 mil, moram em bairros vizinhos; compraram pela localização perto do metrô"
   finalidade: ambos               # uso_proprio | investimento | ambos
@@ -26,6 +29,9 @@ ancoras:
   - "Estação Vila Madalena — 600 m"
   - "Hospital Sírio-Libanês — 12 min de carro"
   - "Shopping Eldorado — 8 min de carro"
+vias_acesso: "Rua Harmonia e Av. Pedroso de Morais"
+valorizacao: "bairro com estoque de lançamentos baixo"
+critica_localizacao: "rua movimentada no horário de pico"
 condicoes_comerciais:
   faixa_preco: "R$ 540 mil – R$ 590 mil"
   ticket_medio: 560000

@@ -1,0 +1,6 @@
+# Correções confirmadas com o cliente, aplicadas antes de qualquer cálculo (trilha/core/correcoes.py).
+# Cada linha diz o motivo e quem confirmou. Nada de exceção escondida em código ou painel.
+excluir:
+  - { lead_id: 900001, motivo: "negócio cadastrado duas vezes no Closer", confirmado_por: "gestora do CRM" }
+data_da_venda:
+  - { lead_id: 900002, data: 2026-09-30, motivo: "fechado no Kommo em 01/10, assinatura em 30/09", confirmado_por: "gestora do CRM" }

@@ -12,8 +12,9 @@ Rotas (todas exigem Authorization: Bearer <TRILHA_API_TOKEN>, exceto /saude):
   POST /conversao      {"cliente_id", "webhook_token", "corpo": <webhook do Kommo, texto ou objeto>, "simular"?}
   POST /freio/avaliar  {"cliente_id", "campanhas": [{plataforma, campanha_id, nome, ativa,
                         gasto_desde_ultimo_lead, horas_sem_evento_conversao, gasto_ultimas_horas}]}
-  POST /funil/raio-x   {"cliente_id", "leads": [LeadFunil], "investimento"?}
-  POST /contas/saude   {"cliente_id", "contas": [{nome, plataforma, status, saldo, gasto_7d}]}
+  POST /funil/raio-x   {"cliente_id", "leads": [LeadFunil], "investimento"?, "investimento_captacao"?}
+  POST /contas/saude   {"cliente_id", "contas": [{nome, id, status, saldo, gasto_7d, anuncios_com_problema…}],
+                        "credencial_ok"?, "conferir_acesso"?}
 
 Isolamento entre clientes em /conversao: cada cliente tem o próprio segredo de webhook
 (KOMMO_WEBHOOK_TOKEN_<CLIENTE>), a conta Kommo do corpo precisa ser a do perfil, e a etapa
@@ -39,6 +40,7 @@ from trilha import __version__
 from trilha.conversao.pipeline import executar, processar
 from trilha.core.economia import calcular
 from trilha.core.freio import MetricaCampanha, avaliar
+from trilha.core.correcoes import aplicar_correcoes, carregar_correcoes
 from trilha.core.funil import LeadFunil, raio_x
 from trilha.core.oferta import carregar_oferta
 from trilha.core.playbook import carregar_playbook
@@ -249,7 +251,11 @@ class TrilhaApi:
         except ValidationError as e:
             raise ErroHttp(400, f"contas inválidas: {e.errors(include_url=False)}") from e
         responsavel = p.operacao.responsavel if p.operacao else "assessor"
-        return {"cliente": p.cliente.id, **saude_do_cliente(contas, responsavel)}
+        esperadas = p.plataformas.meta.contas() if p.plataformas.meta else []
+        return {"cliente": p.cliente.id, **saude_do_cliente(
+            contas, responsavel, os.environ.get("TRILHA_RESPONSAVEL_TECNICO", "responsável técnico"),
+            contas_esperadas=esperadas if dados.get("conferir_acesso") else None,
+            credencial_ok=dados.get("credencial_ok", True) is not False)}
 
     def raio_x(self, dados):
         p = self._perfil(dados)
@@ -257,10 +263,15 @@ class TrilhaApi:
             leads = [LeadFunil.model_validate(x) for x in dados.get("leads", [])]
         except ValidationError as e:
             raise ErroHttp(400, f"histórico de leads inválido: {e.errors(include_url=False)}") from e
-        sla = p.crm.sla_primeiro_contato_min if p.crm else 30
-        investimento = dados.get("investimento")
+        try:
+            correcoes = carregar_correcoes(self.clientes_dir / p.cliente.id / "correcoes.yaml")
+        except (ValidationError, yaml.YAMLError) as e:
+            raise ErroHttp(422, f"correcoes.yaml de '{p.cliente.id}' inválido: {e}") from e
+        leads = aplicar_correcoes(leads, correcoes)
+        investimento, captacao = dados.get("investimento"), dados.get("investimento_captacao")
         return {"cliente": p.cliente.id,
-                **raio_x(leads, carregar_playbook(p.cliente.segmento), float(investimento) if investimento else None, sla)}
+                **raio_x(leads, carregar_playbook(p.cliente.segmento), float(investimento) if investimento else None, crm=p.crm,
+                         investimento_captacao=float(captacao) if captacao is not None else None)}
 
 
 class _ServidorThreads(ThreadingMixIn, WSGIServer):

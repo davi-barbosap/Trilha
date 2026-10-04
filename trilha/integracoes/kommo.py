@@ -109,6 +109,7 @@ class DadosLead:
     utm: dict[str, str] = field(default_factory=dict)
     emails: list[str] = field(default_factory=list)
     telefones: list[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
 
 
 def _valores_campo(campos: list[dict] | None, nome: str) -> list[str]:
@@ -148,6 +149,7 @@ def extrair_dados_lead(lead: dict, contatos: list[dict], campos: dict[str, str])
             dados.ids[padrao] = valores[0]
         elif padrao.startswith("utm_") or padrao in ("codigo_criativo", "origem"):
             dados.utm[padrao] = valores[0]
+    dados.tags = [t["name"] for t in (lead.get("_embedded") or {}).get("tags") or [] if t.get("name")]
     motivos = (lead.get("_embedded") or {}).get("loss_reason") or []
     if motivos and motivos[0].get("name"):
         dados.motivo_perda = motivos[0]["name"]

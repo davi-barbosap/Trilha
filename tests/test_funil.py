@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from trilha.core.funil import LeadFunil, classificar_perda, raio_x
+from trilha.core.perfil import Crm
 from trilha.core.playbook import carregar_playbook
 
 FIX = Path(__file__).parent / "fixtures"
@@ -17,7 +18,8 @@ class TestRaioX(unittest.TestCase):
     def setUpClass(cls):
         cls.playbook = carregar_playbook("imobiliario")
         leads = [LeadFunil.model_validate(x) for x in json.loads((FIX / "funil_leads.json").read_text())]
-        cls.r = raio_x(leads, cls.playbook, investimento=7550, sla_primeiro_contato_min=30)
+        sempre_aberto = Crm(subdominio="x", horario_comercial={"dias": list(range(7)), "inicio": 0, "fim": 24})
+        cls.r = raio_x(leads, cls.playbook, investimento=7550, sla_primeiro_contato_min=30, crm=sempre_aberto)
 
     def test_resultado_e_venda_nao_cpl(self):
         res = self.r["resultado"]
@@ -43,6 +45,7 @@ class TestRaioX(unittest.TestCase):
     def test_primeiro_contato_cadencia_e_responsavel(self):
         pc = self.r["primeiro_contato"]
         self.assertEqual((pc["dentro_do_sla"], pc["sem_primeiro_contato"]), (0.5, 125))
+        self.assertEqual(pc["mediana_minutos_uteis"], pc["mediana_minutos_corridos"])  # expediente 24 h no teste
         self.assertEqual(self.r["cadencia"]["mediana_tentativas_perdidos_antes_de_qualificar"], 1)
         self.assertEqual(self.r["por_responsavel"]["Ana"]["dentro_do_sla"], 1.0)
         self.assertEqual(self.r["por_responsavel"]["Bruno"]["dentro_do_sla"], 0.0)

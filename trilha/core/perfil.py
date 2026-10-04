@@ -97,8 +97,12 @@ class Verba(_Base):
 
 class Meta(_Base):
     ad_account_id: str | None = None
+    ad_account_ids: list[str] = Field(default_factory=list)  # cliente com mais de uma conta (ex.: vendas e pós-venda)
     pixel_id: str | None = None  # conjunto de dados da API de Conversões
     page_id: str | None = None  # necessário para eventos de WhatsApp (business_messaging)
+
+    def contas(self) -> list[str]:
+        return list(dict.fromkeys(([self.ad_account_id] if self.ad_account_id else []) + self.ad_account_ids))
 
 
 class Google(_Base):
@@ -115,6 +119,8 @@ class MapaEvento(_Base):
     pipeline_id: int | None = None  # None = qualquer funil
     status_id: int
     evento: Evento
+    # Para etapas de saída que não são o 143 ("Descartado", "Frio"): motivo usado quando o lead não tem um.
+    motivo: str | None = None
 
 
 class Funil(_Base):
@@ -129,13 +135,35 @@ class Funil(_Base):
     # entrada: onde o lead nasce (SDR) · fechamento: onde a venda acontece (Closer)
     # nutricao: leads em nutrição · base: trabalho sobre base importada · ignorar: teste
     papel: Literal["entrada", "fechamento", "nutricao", "base", "ignorar"]
-    ganho_significa: Evento | None = None  # obrigatório para o 142 contar em funil de entrada
+    ganho_significa: Evento | None = None  # obrigatório para o 142 contar fora do funil de fechamento
 
     @model_validator(mode="after")
     def _ganho(self) -> Funil:
-        if self.papel in ("fechamento", "nutricao") and self.ganho_significa is None:
+        if self.papel == "fechamento" and self.ganho_significa is None:
             self.ganho_significa = "venda"
         return self
+
+
+class TagsCrm(_Base):
+    """Nomes das tags do Kommo que o raio-x lê. Comparação sem maiúsculas e sem acento;
+    "lead reativado" também reconhece "lead reativado | follow-up"."""
+
+    bot_concluido: list[str] = Field(default_factory=lambda: ["bot-concluido", "Interesse Confirmado"])
+    bot_incompleto: list[str] = Field(default_factory=lambda: ["bot-incompleto"])
+    bot_nao_iniciado: list[str] = Field(default_factory=lambda: ["bot-nao-iniciado", "lead frio"])
+    interagiu: list[str] = Field(default_factory=lambda: ["Interagiu"])
+    qualificado: list[str] = Field(default_factory=lambda: ["lead-qualificado"])
+    agendamento: list[str] = Field(default_factory=lambda: ["reuniao-agendada", "reagendar-reuniao", "visita-agendada"])
+    comparecimento: list[str] = Field(default_factory=lambda: ["reuniao-realizada", "visita-realizada"])
+    reativado: list[str] = Field(default_factory=lambda: ["lead reativado", "reativado"])
+    contato_invalido: list[str] = Field(default_factory=lambda: ["nao-cadastrou"])
+
+
+class HorarioComercial(_Base):
+    dias: list[Annotated[int, Field(ge=0, le=6)]] = Field(default_factory=lambda: [0, 1, 2, 3, 4])  # 0 = segunda
+    inicio: Annotated[int, Field(ge=0, le=23)] = 8
+    fim: Annotated[int, Field(ge=1, le=24)] = 18
+    fuso_utc: Annotated[int, Field(ge=-12, le=14)] = -3
 
 
 class Crm(_Base):
@@ -145,6 +173,13 @@ class Crm(_Base):
     mapa_eventos: list[MapaEvento] = Field(default_factory=list)
     campos: dict[str, str] = Field(default_factory=dict)
     sla_primeiro_contato_min: Positivo = 30  # do time comercial do cliente com o lead
+    tags: TagsCrm = Field(default_factory=TagsCrm)
+    origens: dict[str, str] = Field(default_factory=dict)  # apelidos do cliente: {"trilha-performance": "Meta Ads"}
+    baldes: list[str] = Field(default_factory=list)  # usuários que não são pessoas (ex.: o usuário da empresa)
+    gestores: list[str] = Field(default_factory=list)  # aparecem no raio-x, fora da média e dos sinais por pessoa
+    dias_parado: Annotated[int, Field(ge=1)] = 15
+    dias_base_velha: Annotated[int, Field(ge=1)] = 30
+    horario_comercial: HorarioComercial = Field(default_factory=HorarioComercial)
 
     def funil(self, pipeline_id: int | None) -> Funil | None:
         return next((f for f in self.funis if f.pipeline_id == pipeline_id), None)
@@ -173,9 +208,18 @@ class Crm(_Base):
             return None
         if self.funis and f is None:
             return None  # funil não cadastrado: na dúvida, não gera evento
+        m = self._mapa_para(status_id, pipeline_id)
+        return m.evento if m else None
+
+    def motivo_para(self, status_id: int, pipeline_id: int | None) -> str | None:
+        """Motivo de uma etapa de saída que não é o 143 (ex.: "Descartado" → "Contato inválido")."""
+        m = self._mapa_para(status_id, pipeline_id)
+        return m.motivo if m and self.evento_para(status_id, pipeline_id) else None
+
+    def _mapa_para(self, status_id: int, pipeline_id: int | None) -> MapaEvento | None:
         for m in self.mapa_completo():
             if m.status_id == status_id and (m.pipeline_id is None or m.pipeline_id == pipeline_id):
-                return m.evento
+                return m
         return None
 
 

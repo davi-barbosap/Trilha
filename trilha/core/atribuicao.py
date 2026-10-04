@@ -35,8 +35,12 @@ def _legivel(origem: str) -> str:
     return nome or NAO_RASTREADO
 
 
-def normalizar_canal(origem: str | None) -> str:
+def normalizar_canal(origem: str | None, apelidos: dict[str, str] | None = None) -> str:
+    """`apelidos` do perfil (crm.origens) valem antes da regra geral: {"trilha-performance": "Meta Ads"}."""
     s = slug(origem)
+    for apelido, canal in (apelidos or {}).items():
+        if s and slug(apelido) == s:
+            return canal
     if not s or s in _VAZIOS or not any(c.isalpha() for c in s):
         return NAO_RASTREADO
     tokens = s.split("_")
@@ -44,8 +48,10 @@ def normalizar_canal(origem: str | None) -> str:
         return META
     if "google" in s or "gads" in tokens:
         return GOOGLE
-    if "indicacao" in s or "referral" in s:
+    if "indicacao" in s or "recomendacao" in s:
         return "Indicação"
+    if "referral" in s:  # visita vinda de outro site (gravado pelas landing pages), não indicação de pessoa
+        return "Outro site"
     if "direct" in s or "organic" in s or "site" in s:
         return "Direto/Orgânico"
     return _legivel(origem)

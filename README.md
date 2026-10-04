@@ -17,10 +17,10 @@ Por isso o Trilha mede **o funil inteiro, etapa por etapa**, e trata **venda e v
 ## O que faz na prática
 
 **Todos os dias, sozinho**
-- **Raio-x do funil.** Para cada cliente, mostra quantos leads passaram por cada etapa (novo lead → em atendimento → qualificado → agendado → compareceu → proposta → venda), quanto tempo o time comercial do cliente leva para o primeiro contato, quantas tentativas faz antes de desistir, onde e por que os leads são perdidos — separando perda por qualidade do lead, por atendimento, comercial ou externa — e **qual etapa está vazando mais vendas e quanto isso custa em R$**. Mostra lado a lado o que o **marketing entregou** e o que o **comercial converteu**, separa SDR e closer, aponta leads parados há mais de 15 dias e segue a régua de métricas da Trilha (a mesma pessoa conta uma vez por mês, CPL só sobre mídia paga, custo por venda como teto e retorno como piso). Entende operações com vários funis no Kommo (SDR, Closer, Nutrição), em que o "ganho" de um funil não é venda. Vale para qualquer segmento; o imobiliário só muda os nomes (visita agendada, visita realizada).
+- **Raio-x do funil.** Para cada cliente, mostra quantos leads passaram por cada etapa (novo lead → em atendimento → qualificado → agendado → compareceu → proposta → venda), quanto tempo o time comercial do cliente leva para o primeiro contato (só conta mensagem de uma pessoa, não do bot, em horário de expediente), quantas tentativas faz antes de desistir, onde e por que os leads são perdidos — separando perda por qualidade do lead, por atendimento, comercial ou externa — e **qual etapa está vazando mais vendas e quanto isso custa em R$**. Mostra lado a lado o que o **marketing entregou** e o que o **comercial converteu**, separa SDR e closer, compara as pessoas do time (perfil, distribuição de leads, carteira parada), mostra a que horas os leads chegam, aponta leads parados há mais de 15 dias e segue a régua de métricas da Trilha (a mesma pessoa conta uma vez por mês, CPL só sobre mídia paga, custo por venda como teto e retorno como piso). Entende operações com vários funis no Kommo (SDR, Closer, Nutrição), em que o "ganho" de um funil não é venda, e lê as tags reais da operação (estado do bot, reunião realizada, reativado). Vale para qualquer segmento; o imobiliário só muda os nomes (visita agendada, visita realizada).
 - **Devolve a venda real para o Meta e o Google.** Quando o lead muda de etapa no Kommo (qualificado, visita, venda), o sistema avisa as plataformas. Assim elas aprendem a buscar gente parecida com quem compra, não só com quem clica.
 - **Coleta e confere os números** de Meta, Google e Kommo, e acompanha se a verba do mês vai sobrar ou faltar.
-- **Avisa só o que é urgente:** anúncio reprovado, campanha parada, rastreamento quebrado, conta de anúncio desativada ou com saldo pré-pago para menos de 5 dias (com a recarga sugerida).
+- **Avisa só o que é urgente:** anúncio reprovado, campanha parada, rastreamento quebrado, conta de anúncio desativada, com pagamento pendente ou com saldo pré-pago para menos de 5 dias (com a recarga sugerida), anúncio com problema de entrega. Alerta técnico (credencial recusada, coleta parada) vai para o responsável técnico, uma vez só.
 - **Freio de emergência:** se uma campanha está gastando sem trazer nenhum lead, ou com o rastreamento quebrado, pausa e avisa na hora, com um botão para desfazer. É a única coisa que o sistema faz sem pedir. Reativar é sempre decisão do assessor.
 
 **Na véspera de cada compromisso do assessor, deixa o material pronto no ClickUp**
@@ -46,7 +46,7 @@ Caso real da Trilha (imobiliário): **R$ 7.550 investidos, 425 leads, 4 vendas, 
 ```
 Resultado: 4 vendas · R$ 7.084.000 vendidos · retorno de 938,3× o investimento
   custo por visita realizada: R$ 302,00 · custo por venda: R$ 1.888 · CPL (diagnóstico): R$ 17,76
-Primeiro contato: mediana 110,5 min · 50,0% dentro de 30 min · 125 leads sem primeiro contato
+Primeiro contato: mediana 12 min úteis (110,5 corridos) · 74,3% dentro de 30 min úteis · 125 leads sem primeiro contato
 Maior vazamento: Visita realizada (comercial) — 50,0% contra 65,0% de referência ≈ 1,2 venda(s) a menos, R$ 2.125.200
 Marketing entregou: 425 leads · 120 qualificados · 50 agendamentos · R$ 62,92 por qualificado
 ```

@@ -344,7 +344,7 @@ Especificação técnica completa: [Kommo](../integracoes/kommo.md). Código: `t
 
 ### 7.2 Mapa de eventos de qualidade
 
-Cada funil do Kommo tem um papel (`crm.funis`: entrada, fechamento, nutrição, base, ignorar); o "ganho" (142) só é venda no fechamento e na nutrição ([Kommo](../integracoes/kommo.md) §3.1). As etapas seguem o **funil padrão da Trilha**, igual para todos os segmentos ([raio-x do funil](../raio-x-do-funil.md), [ADR-008](../decisoes/008-funil-padrao.md)). **Os IDs de funil e de etapa mudam em cada conta Kommo**, então o mapa vive no `perfil.yaml` de cada cliente (`crm.mapa_eventos`); apenas as etapas de sistema do Kommo são fixas (142 = venda ganha, 143 = perdida) e entram como padrão.
+Cada funil do Kommo tem um papel (`crm.funis`: entrada, fechamento, nutrição, base, ignorar); o "ganho" (142) só é venda no funil de fechamento; nos demais precisa de `ganho_significa` ([Kommo](../integracoes/kommo.md) §3.1). As etapas seguem o **funil padrão da Trilha**, igual para todos os segmentos ([raio-x do funil](../raio-x-do-funil.md), [ADR-008](../decisoes/008-funil-padrao.md)). **Os IDs de funil e de etapa mudam em cada conta Kommo**, então o mapa vive no `perfil.yaml` de cada cliente (`crm.mapa_eventos`); apenas as etapas de sistema do Kommo são fixas (142 = venda ganha, 143 = perdida) e entram como padrão.
 
 | Etapa no Kommo (nome do imobiliário) | Evento padrão | Retorno à plataforma |
 |---|---|---|

@@ -24,6 +24,9 @@ class Identificacao(_Base):
     tipo: str  # empreendimento, curso, serviço, produto…
     estagio: str = ""
     localizacao: dict[str, str] = Field(default_factory=dict)
+    construtora: str = ""  # quem entrega (incorporadora, escola, clínica…)
+    tipologia: str = ""  # tipologias e metragens, turmas, planos…
+    plantas: str = ""
 
 
 class Objecao(_Base):
@@ -86,9 +89,13 @@ class Oferta(_Base):
     aderencia: Aderencia = Field(default_factory=Aderencia)
     diferenciais: list[str] = Field(default_factory=list)
     raridade: str = ""
-    ancoras: list[str] = Field(default_factory=list)
+    ancoras: list[str] = Field(default_factory=list)  # nome próprio + distância ou tempo
+    vias_acesso: str = ""
+    valorizacao: str = ""
+    critica_localizacao: str = ""  # o que o lead costuma criticar na localização
     condicoes_comerciais: dict[str, str | float | int | None] = Field(default_factory=dict)
     objecoes: list[Objecao] = Field(default_factory=list)
+    objecoes_avulsas: str = ""
     perfil_lead: dict[str, str | int | None] = Field(default_factory=dict)
     assets: dict[str, list[str]] = Field(default_factory=dict)
 
