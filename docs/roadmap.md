@@ -17,7 +17,7 @@ O sistema entra em operação num cliente piloto, é testado na prática e depoi
 - ✅ trilha-api: `/saude`, `/clientes`, `/validar`, `/calcular`, `/conversao`, `/freio/avaliar`, `/funil/raio-x`, com segredo de webhook por cliente
 - ✅ Fluxos-modelo do n8n: W01 (conversão real) e W10 (vigia de falhas)
 - ✅ Infraestrutura descrita em `infra/` (n8n 2.x, Postgres, Redis, trilha-api, HTTPS, backup)
-- ✅ 61 testes e verificação automática no GitHub
+- ✅ 62 testes e verificação automática no GitHub
 
 ## Para entrar em operação
 
